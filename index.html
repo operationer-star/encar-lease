@@ -168,38 +168,44 @@ render();
   if(localStorage.getItem('encar_ev_exclude')===null) localStorage.setItem('encar_ev_exclude','1');
   function on(){ return localStorage.getItem('encar_ev_exclude')==='1'; }
   function apply(){
-    var els = document.querySelectorAll('[data-id]');
+    var els = document.querySelectorAll('[data-id]'), hid=0;
     for(var i=0;i<els.length;i++){
       var id = String(els[i].getAttribute('data-id'));
-      var tr = els[i].closest('tr');
-      if(!tr) continue;
-      if(on() && EV.has(id)) tr.style.display='none';
-      else if(tr.style.display==='none' && EV.has(id)) tr.style.display='';
+      if(!EV.has(id)) continue;
+      var tr = els[i].closest('tr'); if(!tr) continue;
+      if(on()){ tr.style.display='none'; hid++; }
+      else if(tr.style.display==='none'){ tr.style.display=''; }
     }
+    return hid;
+  }
+  function anchor(){
+    return document.getElementById('fCls') || document.getElementById('fMat') ||
+           document.getElementById('fRest') || document.getElementById('fEff') ||
+           document.getElementById('fType');
   }
   function mount(){
-    if(document.getElementById('evExcludeBox')) return;
-    var first = document.querySelector('input[type=checkbox]');
-    if(!first) return;
-    var host = first.closest('label') || first.parentElement;
-    if(!host) return;
+    if(document.getElementById('evExcludeBox')) return true;
+    var a = anchor(); if(!a) return false;
+    var host = a.closest('label') || a;
     var lab = document.createElement('label');
-    lab.style.marginLeft='10px'; lab.style.whiteSpace='nowrap';
+    lab.style.marginLeft='8px'; lab.style.whiteSpace='nowrap'; lab.style.cursor='pointer';
     var cb = document.createElement('input');
-    cb.type='checkbox'; cb.id='evExcludeBox'; cb.checked=on();
-    cb.style.marginRight='4px';
+    cb.type='checkbox'; cb.id='evExcludeBox'; cb.checked=on(); cb.style.marginRight='4px';
     cb.addEventListener('change', function(){
       localStorage.setItem('encar_ev_exclude', cb.checked?'1':'0');
-      apply();
+      var h=apply(); console.log('EV filter '+(cb.checked?'ON':'OFF')+', hidden rows: '+h);
     });
     lab.appendChild(cb);
     lab.appendChild(document.createTextNode('\u26A1 \uC804\uAE30\uCC28 \uC81C\uC678'));
     host.parentNode.insertBefore(lab, host.nextSibling);
+    return true;
   }
   function run(){ mount(); apply(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', run); else run();
+  var tries=0, iv=setInterval(function(){ tries++; if(mount()||tries>40){ apply(); clearInterval(iv); } },250);
   var mo = new MutationObserver(function(){ clearTimeout(window.__evT); window.__evT=setTimeout(run,30); });
-  mo.observe(document.body, {childList:true, subtree:true});
+  if(document.body) mo.observe(document.body,{childList:true,subtree:true});
+  console.log('EV filter injected, EV ids: '+EV.size);
 })();
 </script>
 </body></html>
