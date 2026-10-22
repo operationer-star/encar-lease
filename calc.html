@@ -19,7 +19,8 @@ h1{font-size:20px;margin:0 0 4px}
 .stat{margin-left:auto;font-size:12px;color:var(--muted)}
 .stat b{color:var(--fg)}
 .tw{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;font-size:12px;min-width:1500px}
+table{border-collapse:collapse;width:100%;font-size:12px;min-width:1700px}
+.tier{display:inline-block;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:700;border:1px solid var(--line);color:#6b7280}.tier.t1{background:#fef3c7;color:#92400e;border-color:#fcd34d}.tier.t2{background:#dbeafe;color:#1e40af;border-color:#93c5fd}.tier.t3{background:#f3f4f6;color:#374151}.tier.t4{color:#9ca3af}
 th,td{padding:6px 6px;border-bottom:1px solid #f0f1f3;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 th{position:sticky;top:0;background:#f1f5f9;color:#475569;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none}
 th.l,td.l{text-align:left}
@@ -75,6 +76,7 @@ a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11px;font-weig
 
 <div class="bar">
   <label>차종 <select id="grp"></select></label>
+  <label>등급 <select id="tierSel"><option value="all">전체</option><option value="1">1등급(최상위)</option><option value="2">2등급</option><option value="3">3등급</option><option value="4">4등급(기본)</option></select></label>
   <label title="평일 85km×20일 + 주말 50km×약 10일 ≈ 월 2,220km">연간 주행 <input type="number" id="kmy" value="26600" step="200"> km</label>
   <label>매각 할인 <input type="number" id="hair" value="8" step="1"> %</label>
   <label>렌트 추가할인 <input type="number" id="rhair" value="5" step="1"> %</label>
@@ -105,6 +107,7 @@ a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11px;font-weig
   <th class="sk sk2" data-k="fav" title="내 즐겨찾기 순 정렬">⭐</th>
   <th class="sk sk3" data-k="ai" title="AI 추천 순 정렬" style="color:#e63946">★</th>
   <th class="l sk sk4" data-k="car">차량</th>
+  <th data-k="tier" title="트림 등급: 1=최상위 트림 … 4=기본 트림 (차종별 트림명/엔진 기준)">등급</th>
   <th data-k="y">연식</th>
   <th data-k="km">현재km</th>
   <th data-k="kme">만기km</th>
@@ -121,7 +124,9 @@ a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11px;font-weig
   <th data-k="netmi">보험포함환산</th>
   <th data-k="fueln" title="연 주행거리 × 연료단가 ÷ 추정연비 − 주유비 지원">연료비/월<br><small>(지원 차감)</small></th>
   <th data-k="taxm" title="월료에 자동차세 미포함일 때만 (렌트는 포함, 리스는 엔카 포함내역 기준)">자동차세/월</th>
-  <th data-k="allm" title="보험포함환산 + 연료비 + 자동차세(미포함시)">총 월부담</th>
+  <th data-k="holdall" title="매각 없이 만기까지 보유만 할 때: 월환산(보유) + 보험 + 연료 + 세금">매각 전<br><small>월부담</small></th>
+  <th data-k="selleff" title="실매각 ÷ 잔여개월 = 매각이 월부담을 깎아주는 금액. 비율이 클수록 '되팔아야 본전'인 구조">매각효과<br><small>(의존도)</small></th>
+  <th data-k="allm" title="매각 전 월부담 − 매각효과 = 보험포함환산 + 연료비 + 자동차세(미포함시)">총 월부담</th>
   <th data-k="pkn">옵션</th>
   <th>링크</th>
 </tr></thead><tbody id="tb"></tbody></table></div>
@@ -162,6 +167,17 @@ function spec(g,car,fu){const c=(car||'').toLowerCase();const f=fuelClass(fu);le
  return{kpl,cc,f}}
 function patFactor(f,pat){if(f==='EV')return 1;if(f==='HEV')return pat==='jam'?1.0:pat==='hwy'?0.95:1.0;return pat==='jam'?0.88:pat==='hwy'?1.2:1.0}
 function annualTax(cc,ageM){if(!cc)return 13;let base=cc<=1000?cc*80:cc<=1600?cc*140:cc*200;const yrs=Math.floor(ageM/12);const disc=yrs>=3?Math.min(0.5,0.05*(yrs-1)):0;return Math.round(base*1.3*(1-disc))/1e4}
+// 트림 등급 (1=최상위 … 4=기본). 차종별 트림명/엔진으로 판정, 모르면 0
+const TIERN={1:'1등급(최상위)',2:'2등급(상위)',3:'3등급(중간)',4:'4등급(기본)'};
+function tierOf(g,b,grade,m){const t=((b||'')+' '+(grade||'')+' '+(m||'')).toLowerCase();const has=(...ws)=>ws.some(w=>t.includes(w.toLowerCase()));
+ if(g==='카니발'){if(has('시그니처','하이리무진','그래비티'))return 1;if(has('노블레스','x line','x-line','xline'))return 2;if(has('프레스티지'))return 3;if(has('트렌디'))return 4;return 0}
+ if(g==='그랜저'){if(has('캘리그래피'))return 1;if(has('익스클루시브','르블랑','아너스'))return 2;if(has('프리미엄'))return 3;if(has('모던'))return 4;return 0}
+ if(g==='팰리세이드'){if(has('캘리그래피'))return 1;if(has('르블랑'))return 2;if(has('프레스티지'))return 3;if(has('익스클루시브'))return 4;return 0}
+ if(g==='GV80'||g==='GV70'||g==='G80'){if(has('블랙','m3','e-s/c'))return 1;if(has('3.5t','e-awd','3.5 터보'))return 2;if(has('awd'))return 3;return 4}
+ if(g==='BMW 5시리즈'){const top=has('m550','550e','545e','m5 ');const mid=has('530','540');const pro=has('프로');const pack=has('m 스포츠','럭셔리','스페셜');if(top||(mid&&pro))return 1;if(mid&&pack)return 2;if(mid||pro||pack)return 3;return 4}
+ if(g==='BMW X3'||g==='BMW X4'){if(has('m40','m50'))return 1;if(has('30 ','30e','30i','30d')||has('프로'))return 2;if(has('m 스포츠','xline'))return 3;return 4}
+ if(g==='벤츠 E-클래스'){if(has('e53','e63','amg e','e450'))return 1;if(has('e350','e300'))return 2;if(has('amg line','익스클루시브'))return 3;return 4}
+ return 0}
 function calc(r,p){const [id,mk,g,mf,m,b,y,km,fu,st,lt,fee,n,acq,su,mf2,rv,rp,dep,tax,pk,grade,loc]=r;
  const buy=lt==='금융리스'?1:0; const mat=buy?(rp||0):(rv||0); const pr0x=predict(g,m,fuelClass(fu),nb(b),Math.max(0,NOWM-(Math.floor(y/100)*12+y%100)),km); const susp=!(mat>1)||(pr0x&&mat<pr0x.p*0.08); const canBuy=((mf2||'').includes('구매')||(buy&&mat>0))&&!susp;
  const age0=Math.max(0,NOWM-(Math.floor(y/100)*12+y%100)); const kme=Math.round(km+p.kmy*n/12);
@@ -171,8 +187,8 @@ function calc(r,p){const [id,mk,g,mf,m,b,y,km,fu,st,lt,fee,n,acq,su,mf2,rv,rp,de
  const taxv=Math.round(mat*p.taxr); const cash0=acq-su; const total=fee*n+cash0+mat+taxv;
  const net=sell!=null?total-sell:null; const insM=(tax||'').includes('보험')?0:p.ins;
  const sp=spec(g,mf+' '+m+' '+b,fu); const kplAdj=sp.kpl?sp.kpl*patFactor(sp.f,p.pat):null; const unit=sp.f==='디젤'?p.pd:p.pg; const fuelm=kplAdj?+(p.kmy/kplAdj*unit/1e4/12).toFixed(1):(sp.f==='EV'?+(p.kmy*0.2*350/1e4/12).toFixed(1):null);
- const taxIncl=st==='렌트'||(tax||'').includes('세금'); const taxm=taxIncl?0:+(annualTax(sp.cc,Math.max(0,NOWM-(Math.floor(y/100)*12+y%100))+Math.round(n/2))/12).toFixed(1); const fueln=fuelm!=null?+Math.max(0,fuelm-p.fsub).toFixed(1):null; const allm=(net!=null&&fuelm!=null)?+(net/n+insM+fueln+taxm).toFixed(1):null;
- return{id,mk,g,susp,fav:FAV.has(String(id))?1:0,ai:AI[String(id)]?1:0,airsn:AI[String(id)]||'',car:mf+' '+m+' '+b,y,km,kme,fee,n,cash0,acq,su,mat,buy,canBuy,st,lt,pend:pend!=null?Math.round(pend):null,pend0:pr0?Math.round(pr0.p):null,sell,margin:sell!=null&&mat>0?sell-mat:null,total,holdm:+(total/n).toFixed(1),net,netm:net!=null?+(net/n).toFixed(1):null,netmi:net!=null?+(net/n+insM).toFixed(1):null,insM,fuelm,fueln,taxm,taxIncl,allm,kpl:kplAdj?+kplAdj.toFixed(1):null,cc:sp.cc,pk:pk||[],pkn:(pk||[]).length,pkg,taxv,tax:tax||'',grade,loc,ev:fuelClass(fu)==='EV',exact:pr?pr.exact:false,rmse:MODELS[g]?MODELS[g].rmse:null}}
+ const taxIncl=st==='렌트'||(tax||'').includes('세금'); const taxm=taxIncl?0:+(annualTax(sp.cc,Math.max(0,NOWM-(Math.floor(y/100)*12+y%100))+Math.round(n/2))/12).toFixed(1); const fueln=fuelm!=null?+Math.max(0,fuelm-p.fsub).toFixed(1):null; const allm=(net!=null&&fuelm!=null)?+(net/n+insM+fueln+taxm).toFixed(1):null; const holdall=fuelm!=null?+(total/n+insM+fueln+taxm).toFixed(1):null; const selleff=(sell!=null&&holdall)?+(sell/n).toFixed(1):null; const sellpct=(selleff!=null&&holdall>0)?Math.round(selleff/holdall*100):null; const tier=tierOf(g,b,grade,m);
+ return{id,mk,g,susp,fav:FAV.has(String(id))?1:0,ai:AI[String(id)]?1:0,airsn:AI[String(id)]||'',car:mf+' '+m+' '+b,y,km,kme,fee,n,cash0,acq,su,mat,buy,canBuy,st,lt,pend:pend!=null?Math.round(pend):null,pend0:pr0?Math.round(pr0.p):null,sell,margin:sell!=null&&mat>0?sell-mat:null,total,holdm:+(total/n).toFixed(1),net,netm:net!=null?+(net/n).toFixed(1):null,netmi:net!=null?+(net/n+insM).toFixed(1):null,insM,fuelm,fueln,taxm,taxIncl,allm,holdall,selleff,sellpct,tier,tiern:TIERN[tier]||'등급 미분류',kpl:kplAdj?+kplAdj.toFixed(1):null,cc:sp.cc,pk:pk||[],pkn:(pk||[]).length,pkg,taxv,tax:tax||'',grade,loc,ev:fuelClass(fu)==='EV',exact:pr?pr.exact:false,rmse:MODELS[g]?MODELS[g].rmse:null}}
 let sortK='allm',sortD=1,selId=null;
 const FAV=(()=>{try{return new Set(JSON.parse(localStorage.getItem('encar_calc_fav')||'[]').map(String))}catch(e){return new Set()}})();
 function saveFav(){try{localStorage.setItem('encar_calc_fav',JSON.stringify([...FAV]))}catch(e){}}
@@ -188,6 +204,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  if($('posOnly').checked)rows=rows.filter(r=>r.margin!=null&&r.margin>0);
  if($('favOnly').checked)rows=rows.filter(r=>r.fav);
  if($('aiOnly').checked)rows=rows.filter(r=>r.ai);
+ const tsel=$('tierSel').value;if(tsel!=='all')rows=rows.filter(r=>String(r.tier)===tsel);
  if(q)rows=rows.filter(r=>r.car.toLowerCase().includes(q)||r.id.includes(q));
  rows.sort((a,b)=>{if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.allm??1e9)-(b.allm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
  $('cnt').innerHTML=`<b>${rows.length}</b>대 표시 · 전체 후보 ${ROWS.length}대`;
@@ -197,7 +214,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  rows.slice(0,600).forEach((r,i)=>{const tr=document.createElement('tr');tr.className=(i<3?'r'+(i+1):'')+(r.id===selId?' sel':'')+(r.fav?' fav':'')+(r.ai?' ai':'');tr.dataset.id=r.id;
   const pills=`<span class="pill ${r.st==='렌트'?'rent':'lease'}">${r.lt||r.st}</span>${r.buy?'<span class="pill buy">구매필수</span>':''}${!r.canBuy?(r.susp?'<span class="pill no" title="만기구매가가 없거나 비정상적으로 낮음">구매가 미확인</span>':'<span class="pill no">반납만</span>'):''}${r.ev?'<span class="pill ev">⚡EV</span>':''}`;
   const tip=r.pkn?`<b>선택 패키지 ${r.pkn}개 · 합계 ${f1(r.pkg)}만원</b><br>${r.pk.map(x=>`· ${x[0]} <small>${x[1]?x[1]+'만':''}</small>`).join('<br>')}`:'<b>등록된 선택 패키지 없음</b><br><small>트림 기본 사양만</small>';
-  tr.innerHTML=`<td class="rank sk sk1">${i+1}</td><td class="sk sk2"><button class="fav${r.fav?' on':''}" data-fav="${r.id}" title="내 즐겨찾기">${r.fav?'★':'☆'}</button></td><td class="sk sk3"><button class="ai${r.ai?' on':''}" title="${r.ai?'AI 추천: '+r.airsn.replace(/"/g,'&quot;'):'AI 추천 아님'}">${r.ai?'★':'·'}</button></td><td class="l car sk sk4">${r.car}${pills}${r.ai?'<span class="airsn">★ '+r.airsn+'</span>':''}<br><small style="color:#6b7280">${r.grade||''}${r.loc?' · '+r.loc:''}${r.exact?'':' · <span title="세부 트림 매칭 안 됨(차종 평균으로 추정)">시세≈</span>'}</small></td><td>${String(r.y).slice(2,4)}/${String(r.y).slice(4,6)}</td><td>${f1(r.km)}</td><td>${f1(r.kme)}</td><td class="hl">${f1(r.fee)}</td><td>${r.n}</td><td class="${r.cash0<0?'good':''}">${r.cash0<0?'−'+f1(-r.cash0)+' 받음':f1(r.cash0)}</td><td>${f1(r.mat)}</td><td>${f1(r.pend)}</td><td>${f1(r.sell)}</td><td class="${r.margin==null?'':r.margin>=0?'good':'bad'}">${r.margin==null?'-':(r.margin>=0?'+':'−')+f1(Math.abs(r.margin))}</td><td>${f1(r.total)}</td><td>${f2(r.holdm)}</td><td class="hl">${f2(r.netm)}</td><td class="hl">${f2(r.netmi)}${r.insM?'<small style="color:#6b7280"> (+보험'+r.insM+')</small>':''}</td><td title="추정연비 ${r.kpl||'-'}km/ℓ · 지원 전 ${f2(r.fuelm)}">${f2(r.fueln)}${r.fuelm!==r.fueln?'<small style="color:#6b7280"> ('+f2(r.fuelm)+')</small>':''}</td><td>${r.taxIncl?'<small style="color:#6b7280">포함</small>':f2(r.taxm)}</td><td class="hl" style="color:var(--accent)">${f2(r.allm)}</td><td><span class="opt" tabindex="0">${r.pkn}개 · ${f1(r.pkg)}<span class="tip">${tip}</span></span></td><td><a class="go" href="https://fem.encar.com/cars/detail/${r.id}" target="_blank" rel="noopener">엔카</a></td>`;
+  tr.innerHTML=`<td class="rank sk sk1">${i+1}</td><td class="sk sk2"><button class="fav${r.fav?' on':''}" data-fav="${r.id}" title="내 즐겨찾기">${r.fav?'★':'☆'}</button></td><td class="sk sk3"><button class="ai${r.ai?' on':''}" title="${r.ai?'AI 추천: '+r.airsn.replace(/"/g,'&quot;'):'AI 추천 아님'}">${r.ai?'★':'·'}</button></td><td class="l car sk sk4">${r.car}${pills}${r.ai?'<span class="airsn">★ '+r.airsn+'</span>':''}<br><small style="color:#6b7280">${r.grade||''}${r.loc?' · '+r.loc:''}${r.exact?'':' · <span title="세부 트림 매칭 안 됨(차종 평균으로 추정)">시세≈</span>'}</small></td><td><span class="tier t${r.tier}" title="${r.tiern}">${r.tier?r.tier+'등급':'-'}</span></td><td>${String(r.y).slice(2,4)}/${String(r.y).slice(4,6)}</td><td>${f1(r.km)}</td><td>${f1(r.kme)}</td><td class="hl">${f1(r.fee)}</td><td>${r.n}</td><td class="${r.cash0<0?'good':''}">${r.cash0<0?'−'+f1(-r.cash0)+' 받음':f1(r.cash0)}</td><td>${f1(r.mat)}</td><td>${f1(r.pend)}</td><td>${f1(r.sell)}</td><td class="${r.margin==null?'':r.margin>=0?'good':'bad'}">${r.margin==null?'-':(r.margin>=0?'+':'−')+f1(Math.abs(r.margin))}</td><td>${f1(r.total)}</td><td>${f2(r.holdm)}</td><td class="hl">${f2(r.netm)}</td><td class="hl">${f2(r.netmi)}${r.insM?'<small style="color:#6b7280"> (+보험'+r.insM+')</small>':''}</td><td title="추정연비 ${r.kpl||'-'}km/ℓ · 지원 전 ${f2(r.fuelm)}">${f2(r.fueln)}${r.fuelm!==r.fueln?'<small style="color:#6b7280"> ('+f2(r.fuelm)+')</small>':''}</td><td>${r.taxIncl?'<small style="color:#6b7280">포함</small>':f2(r.taxm)}</td><td>${f2(r.holdall)}</td><td class="${r.sellpct!=null&&r.sellpct>=50?'bad':''}" title="매각이 월부담의 ${r.sellpct??'-'}%를 깎아줌">${r.selleff==null?'-':'−'+f2(r.selleff)}${r.sellpct!=null?'<small style="color:#6b7280"> ('+r.sellpct+'%)</small>':''}</td><td class="hl" style="color:var(--accent)">${f2(r.allm)}</td><td><span class="opt" tabindex="0">${r.pkn}개 · ${f1(r.pkg)}<span class="tip">${tip}</span></span></td><td><a class="go" href="https://fem.encar.com/cars/detail/${r.id}" target="_blank" rel="noopener">엔카</a></td>`;
   tr.addEventListener('click',e=>{const fb=e.target.closest('button.fav');if(fb){e.stopPropagation();toggleFav(fb.dataset.fav);return;}if(e.target.closest('a,.opt'))return;selId=r.id;showDetail(r);render();});
   tb.appendChild(tr);});
  document.querySelectorAll('th[data-k]').forEach(th=>th.classList.toggle('on',th.dataset.k===sortK));
@@ -221,7 +238,10 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  <div><span>보험 포함 환산 (월료 포함내역: ${r.tax||'정보 없음'})</span><span>${f2(r.netmi)}</span></div>
  <div><span>연료비/월 (연 ${f1(P().kmy)}km ÷ 추정연비 ${r.kpl||'-'}km/ℓ, 주유비 지원 ${f1(P().fsub)} 차감)</span><span>${f2(r.fueln)}${r.fuelm!==r.fueln?' <small>(지원 전 '+f2(r.fuelm)+')</small>':''}</span></div>
  <div><span>자동차세/월 ${r.taxIncl?'(월료에 포함)':'(배기량 '+f1(r.cc)+'cc, 차령 감면 반영)'}</span><span>${r.taxIncl?'포함':f2(r.taxm)}</span></div>
- <div><span><b>총 월부담 (보험·세금·연료 포함)</b></span><span><b>${f2(r.allm)}</b></span></div>
+ <div><span>매각 전 월부담 (보유만: 총구매비용÷잔여 + 보험·연료·세금)</span><span>${f2(r.holdall)}</span></div>
+ <div><span>매각효과 (실매각 ÷ 잔여) · 매각 의존도</span><span class="${r.sellpct>=50?'bad':''}">${r.selleff==null?'-':'−'+f2(r.selleff)+' ('+r.sellpct+'%)'}</span></div>
+ <div><span><b>총 월부담 (보험·세금·연료 포함, 매각 반영)</b></span><span><b>${f2(r.allm)}</b></span></div>
+ <div><span>트림 등급</span><span>${r.tiern}${r.grade?' · '+r.grade:''}</span></div>
  ${r.ai?'<div><span style="color:#e63946"><b>★ AI 추천</b></span><span style="font-weight:500;color:#b91c1c;text-align:right;max-width:70%">'+r.airsn+'</span></div>':''}
  <div><span>시세 모델 오차 (${r.g})</span><span>±${r.rmse?Math.round(r.rmse*100):'-'}%${r.exact?'':' · 트림 근사'}</span></div>
  </div>
@@ -232,9 +252,9 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  $('grp').innerHTML='<option value="all">전체 차종</option>'+gs.map(g=>`<option>${g}</option>`).join('');
  try{const pf=JSON.parse(localStorage.getItem('encar_calc_prefs')||'{}');if(pf.g&&(pf.g==='all'||gs.includes(pf.g)))$('grp').value=pf.g;if(pf.kmy&&pf.kmy!=='24000')$('kmy').value=pf.kmy;}catch(e){}
  $('sub').textContent=`${DATA.date} 수집 · 후보 ${ROWS.length}대 (${gs.join(', ')}) · 시세 모델: 엔카 일반 매물 ${Object.values(MODELS).reduce((s,m)=>s+m.n,0).toLocaleString()}대 · 단위 만원`;
- $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정) · 연료비 = 연 주행거리 ÷ 추정연비(차종·연료별 공인 복합연비 대표값, 주행 패턴 보정: 정체 시 내연기관 −12%, 고속 시 +20%, 하이브리드는 거의 그대로) × 연료단가 · 자동차세 = 배기량×cc당 세율×1.3(교육세), 차령 3년차부터 연 5% 감면(최대 50%); 렌트는 월료에 포함, 리스는 엔카 '월리스료 포함내역'에 세금이 있을 때만 포함으로 처리 · 연료비는 회사 주유비 지원(기본 월 20만)을 뺀 값 · 취등록세는 만기 구매 대신 승계매매로 넘길 계획이라 기본 0%(만기 인수 시 7% 입력) · 총 월부담 = 보험포함환산 + 연료비(지원 차감) + 자동차세(미포함시).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆(노란 별)는 내 즐겨찾기(이 브라우저에 저장), 빨간 ★은 AI 추천(마우스를 올리면 사유). 각각 '내 즐겨찾기만' / 'AI 추천만'으로 모아볼 수 있습니다. 주소 뒤에 #fav=엔카ID,엔카ID 를 붙여 열면 그 매물들이 즐겨찾기에 추가됩니다.`;
+ $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정) · 연료비 = 연 주행거리 ÷ 추정연비(차종·연료별 공인 복합연비 대표값, 주행 패턴 보정: 정체 시 내연기관 −12%, 고속 시 +20%, 하이브리드는 거의 그대로) × 연료단가 · 자동차세 = 배기량×cc당 세율×1.3(교육세), 차령 3년차부터 연 5% 감면(최대 50%); 렌트는 월료에 포함, 리스는 엔카 '월리스료 포함내역'에 세금이 있을 때만 포함으로 처리 · 연료비는 회사 주유비 지원(기본 월 20만)을 뺀 값 · 취등록세는 만기 구매 대신 승계매매로 넘길 계획이라 기본 0%(만기 인수 시 7% 입력) · 총 월부담 = 보험포함환산 + 연료비(지원 차감) + 자동차세(미포함시) · 매각 전 월부담 = 매각 없이 보유만 할 때(총구매비용÷잔여 + 보험·연료·세금), 매각효과 = 실매각÷잔여, 괄호의 %는 매각 의존도(50% 이상이면 붉게 표시: 되팔아야 본전인 구조라 시세 오차 리스크가 큼) · 등급 = 트림 등급(1등급 최상위 … 4등급 기본; 카니발 시그니처·하이리무진·그래비티=1, 노블레스·X Line=2, 프레스티지=3 / 그랜저·팰리세이드 캘리그래피=1 / 제네시스·BMW·벤츠는 엔진·패키지 기준 근사).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆(노란 별)는 내 즐겨찾기(이 브라우저에 저장), 빨간 ★은 AI 추천(마우스를 올리면 사유). 각각 '내 즐겨찾기만' / 'AI 추천만'으로 모아볼 수 있습니다. 주소 뒤에 #fav=엔카ID,엔카ID 를 붙여 열면 그 매물들이 즐겨찾기에 추가됩니다.`;
  document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=1;}render();}));
- ['grp','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
+ ['grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
  render();})();
 </script>
 </body>
