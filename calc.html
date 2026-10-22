@@ -173,7 +173,7 @@ function calc(r,p){const [id,mk,g,mf,m,b,y,km,fu,st,lt,fee,n,acq,su,mf2,rv,rp,de
  const sp=spec(g,mf+' '+m+' '+b,fu); const kplAdj=sp.kpl?sp.kpl*patFactor(sp.f,p.pat):null; const unit=sp.f==='디젤'?p.pd:p.pg; const fuelm=kplAdj?+(p.kmy/kplAdj*unit/1e4/12).toFixed(1):(sp.f==='EV'?+(p.kmy*0.2*350/1e4/12).toFixed(1):null);
  const taxIncl=st==='렌트'||(tax||'').includes('세금'); const taxm=taxIncl?0:+(annualTax(sp.cc,Math.max(0,NOWM-(Math.floor(y/100)*12+y%100))+Math.round(n/2))/12).toFixed(1); const fueln=fuelm!=null?+Math.max(0,fuelm-p.fsub).toFixed(1):null; const allm=(net!=null&&fuelm!=null)?+(net/n+insM+fueln+taxm).toFixed(1):null;
  return{id,mk,g,susp,fav:FAV.has(String(id))?1:0,ai:AI[String(id)]?1:0,airsn:AI[String(id)]||'',car:mf+' '+m+' '+b,y,km,kme,fee,n,cash0,acq,su,mat,buy,canBuy,st,lt,pend:pend!=null?Math.round(pend):null,pend0:pr0?Math.round(pr0.p):null,sell,margin:sell!=null&&mat>0?sell-mat:null,total,holdm:+(total/n).toFixed(1),net,netm:net!=null?+(net/n).toFixed(1):null,netmi:net!=null?+(net/n+insM).toFixed(1):null,insM,fuelm,fueln,taxm,taxIncl,allm,kpl:kplAdj?+kplAdj.toFixed(1):null,cc:sp.cc,pk:pk||[],pkn:(pk||[]).length,pkg,taxv,tax:tax||'',grade,loc,ev:fuelClass(fu)==='EV',exact:pr?pr.exact:false,rmse:MODELS[g]?MODELS[g].rmse:null}}
-let sortK='netm',sortD=1,selId=null;
+let sortK='allm',sortD=1,selId=null;
 const FAV=(()=>{try{return new Set(JSON.parse(localStorage.getItem('encar_calc_fav')||'[]').map(String))}catch(e){return new Set()}})();
 function saveFav(){try{localStorage.setItem('encar_calc_fav',JSON.stringify([...FAV]))}catch(e){}}
 function toggleFav(id){id=String(id);if(FAV.has(id))FAV.delete(id);else FAV.add(id);saveFav();render();}
@@ -189,7 +189,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  if($('favOnly').checked)rows=rows.filter(r=>r.fav);
  if($('aiOnly').checked)rows=rows.filter(r=>r.ai);
  if(q)rows=rows.filter(r=>r.car.toLowerCase().includes(q)||r.id.includes(q));
- rows.sort((a,b)=>{if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.netm??1e9)-(b.netm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
+ rows.sort((a,b)=>{if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.allm??1e9)-(b.allm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
  $('cnt').innerHTML=`<b>${rows.length}</b>대 표시 · 전체 후보 ${ROWS.length}대`;
  $('favCnt').textContent=FAV.size?'('+FAV.size+')':'';
  $('aiCnt').textContent='('+ROWS.filter(r=>AI[String(r[0])]).length+')';
