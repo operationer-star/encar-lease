@@ -177,11 +177,12 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  </div>
  <p class="pk"><b>옵션 ${r.pkn}개 · 합계 ${f1(r.pkg)}만원</b>${r.pk.length?' — '+r.pk.map(x=>x[0]+(x[1]?'('+x[1]+')':'')).join(', '):' (등록된 선택 패키지 없음)'} · 트림: ${r.grade||'-'}</p>`;
  d.scrollIntoView({behavior:'smooth',block:'nearest'});}
-(function init(){const gs=[...new Set(ROWS.map(r=>r[2]))];const order=['카니발','그랜저','팰리세이드','GV80','GV70','G80','BMW 5시리즈','BMW X3','BMW X4','벤츠 E-클래스'];gs.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+(function init(){try{const m=/fav=([\d,]+)/.exec(location.hash||'');if(m){m[1].split(',').filter(Boolean).forEach(id=>FAV.add(String(id)));saveFav();history.replaceState(null,'',location.pathname+location.search);}}catch(e){}
+ const gs=[...new Set(ROWS.map(r=>r[2]))];const order=['카니발','그랜저','팰리세이드','GV80','GV70','G80','BMW 5시리즈','BMW X3','BMW X4','벤츠 E-클래스'];gs.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
  $('grp').innerHTML='<option value="all">전체 차종</option>'+gs.map(g=>`<option>${g}</option>`).join('');
  try{const pf=JSON.parse(localStorage.getItem('encar_calc_prefs')||'{}');if(pf.g&&(pf.g==='all'||gs.includes(pf.g)))$('grp').value=pf.g;if(pf.kmy)$('kmy').value=pf.kmy;}catch(e){}
  $('sub').textContent=`${DATA.date} 수집 · 후보 ${ROWS.length}대 (${gs.join(', ')}) · 시세 모델: 엔카 일반 매물 ${Object.values(MODELS).reduce((s,m)=>s+m.n,0).toLocaleString()}대 · 단위 만원`;
- $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆를 누르면 즐겨찾기(이 브라우저에 저장)되고 '⭐ 즐겨찾기만'으로 모아볼 수 있습니다.`;
+ $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆를 누르면 즐겨찾기(이 브라우저에 저장)되고 '⭐ 즐겨찾기만'으로 모아볼 수 있습니다. 주소 뒤에 #fav=엔카ID,엔카ID 를 붙여 열면 그 매물들이 즐겨찾기에 추가됩니다.`;
  document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=1;}render();}));
  ['grp','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','q'].forEach(id=>$(id).addEventListener('input',render));
  render();})();
