@@ -106,6 +106,7 @@ body:not(.showadv) .adv{display:none}
   <label><input type="checkbox" id="evx" checked> 전기차 제외</label>
   <label><input type="checkbox" id="posOnly"> 만기 마진 +만</label>
   <label><input type="checkbox" id="favOnly"> ⭐ 내 즐겨찾기만 <span id="favCnt" style="color:#6b7280;font-weight:500"></span></label>
+  <label><input type="checkbox" id="aiTop" checked> <span style="color:#e63946">★</span> AI 추천 맨 위 고정</label>
   <label><input type="checkbox" id="aiOnly"> <span style="color:#e63946">★</span> AI 추천만 <span id="aiCnt" style="color:#6b7280;font-weight:500"></span></label>
   <label>검색 <input type="text" id="q" placeholder="차량명 / 엔카ID" style="width:160px"></label>
   <span class="stat" id="cnt"></span>
@@ -288,7 +289,8 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  if($('aiOnly').checked)rows=rows.filter(r=>r.ai);
  const tsel=$('tierSel').value;if(tsel!=='all')rows=rows.filter(r=>String(r.tier)===tsel);
  if(q)rows=rows.filter(r=>r.car.toLowerCase().includes(q)||r.id.includes(q));
- rows.sort((a,b)=>{if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.pvm??1e9)-(b.pvm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
+ const AIO=Object.keys(AI);const aiTop=$('aiTop').checked;
+ rows.sort((a,b)=>{if(aiTop&&a.ai!==b.ai)return b.ai-a.ai;if(aiTop&&a.ai&&b.ai)return AIO.indexOf(String(a.id))-AIO.indexOf(String(b.id));if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.pvm??1e9)-(b.pvm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
  $('cnt').innerHTML=`<b>${rows.length}</b>대 표시 · 전체 후보 ${ROWS.length}대`;
  $('favCnt').textContent=FAV.size?'('+FAV.size+')':'';
  $('aiCnt').textContent='('+ROWS.filter(r=>AI[String(r[0])]).length+')';
@@ -344,7 +346,7 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  $('sub').textContent=`${DATA.date} 수집 · 후보 ${ROWS.length}대 (${gs.length}개 차종) · 시세 모델: 엔카 일반 매물 ${Object.values(MODELS).reduce((s,m)=>s+m.n,0).toLocaleString()}대 · 단위 만원`;
  $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정) · 연료비 = 연 주행거리 ÷ 추정연비(차종·연료별 공인 복합연비 대표값, 주행 패턴 보정: 정체 시 내연기관 −12%, 고속 시 +20%, 하이브리드는 거의 그대로) × 연료단가 · 자동차세 = 배기량×cc당 세율×1.3(교육세), 차령 3년차부터 연 5% 감면(최대 50%); 렌트는 월료에 포함, 리스는 엔카 '월리스료 포함내역'에 세금이 있을 때만 포함으로 처리 · 연료비는 회사 주유비 지원(기본 월 20만)을 뺀 값 · 취등록세는 만기 구매 대신 승계매매로 넘길 계획이라 기본 0%(만기 인수 시 7% 입력) · 총 월부담 = 보험포함환산 + 연료비(지원 차감) + 자동차세(미포함시) · 매각 전 월부담 = 매각 없이 보유만 할 때(총구매비용÷잔여 + 보험·연료·세금), 매각효과 = 실매각÷잔여, 괄호의 %는 매각 의존도(50% 이상이면 붉게 표시: 되팔아야 본전인 구조라 시세 오차 리스크가 큼) · 등급 = 트림 등급(1등급 최상위 … 4등급 기본; 카니발 X Line·블랙에디션·그래비티·하이리무진=1, 시그니처=2, 노블레스=3, 프레스티지=4 (엔카 중고 시세 순) / 그랜저·팰리세이드 캘리그래피=1 / 제네시스·BMW·벤츠는 엔진·패키지 기준 근사).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆(노란 별)는 내 즐겨찾기(이 브라우저에 저장), 빨간 ★은 AI 추천(마우스를 올리면 사유). 각각 '내 즐겨찾기만' / 'AI 추천만'으로 모아볼 수 있습니다. 주소 뒤에 #fav=엔카ID,엔카ID 를 붙여 열면 그 매물들이 즐겨찾기에 추가됩니다.`;
  document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=(k==='fam')?-1:1;}render();}));
- ['tfee','sfee','exitF','fw','famOnly','rate','mnt','bud','budK','grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
+ ['aiTop','tfee','sfee','exitF','fw','famOnly','rate','mnt','bud','budK','grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
  render();})();
 </script>
 </body>
