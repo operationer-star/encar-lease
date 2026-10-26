@@ -289,7 +289,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  if($('aiOnly').checked)rows=rows.filter(r=>r.ai);
  const tsel=$('tierSel').value;if(tsel!=='all')rows=rows.filter(r=>String(r.tier)===tsel);
  if(q)rows=rows.filter(r=>r.car.toLowerCase().includes(q)||r.id.includes(q));
- const AIO=Object.keys(AI);const aiTop=$('aiTop').checked;
+ const AIO=['40421034','41416058','42760583','42934170','42359892'].concat(Object.keys(AI));const aiTop=$('aiTop').checked;
  rows.sort((a,b)=>{if(aiTop&&a.ai!==b.ai)return b.ai-a.ai;if(aiTop&&a.ai&&b.ai)return AIO.indexOf(String(a.id))-AIO.indexOf(String(b.id));if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.pvm??1e9)-(b.pvm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
  $('cnt').innerHTML=`<b>${rows.length}</b>대 표시 · 전체 후보 ${ROWS.length}대`;
  $('favCnt').textContent=FAV.size?'('+FAV.size+')':'';
