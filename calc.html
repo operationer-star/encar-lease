@@ -87,12 +87,14 @@ a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11px;font-weig
   <label>경유 <input type="number" id="pd" value="1550" step="10"> 원/ℓ</label>
   <label>주유비 지원 <input type="number" id="fsub" value="20" step="1"> 만/월</label>
   <label title="돈의 시간가치: 나중에 내는 돈은 지금 내는 돈보다 부담이 작음(예금이자 기준)">할인율 <input type="number" id="rate" value="3.5" step="0.5"> %/년</label>
+  <label title="가족 적합도 10점을 월 몇 만원 가치로 볼지 (가족 추천순 = 실질 월비용 − (적합도−60)×가중÷10)">가족가치 <input type="number" id="fw" value="5" step="1"> 만/10점</label>
   <label title="월료에 정비가 포함되지 않은 매물에 더하는 정비비">정비비 <input type="number" id="mnt" value="2.5" step="0.5"> 만/월</label>
   <label>주행 <select id="pat"><option value="jam">출퇴근 정체(경인고속)</option><option value="mix">복합</option><option value="hwy">고속 정속</option></select></label>
 </div>
 <div class="bar">
   <label title="반납 기준 / 매각 기준(총 월부담) / 둘 중 낮은 값">월 예산 ≤ <input type="number" id="bud" value="70" step="5"> 만 <select id="budK"><option value="pv">실질 월비용</option><option value="min">반납·매각 중 낮은 값</option><option value="ret">반납 기준</option><option value="allm">매각 기준(총 월부담)</option></select></label>
   <label><input type="checkbox" id="buyOnly" checked> 만기 구매 가능만</label>
+  <label title="4인 가족 적합도 60점 이상(대략 중형 SUV·준대형 세단·미니밴급)"><input type="checkbox" id="famOnly" checked> 👨‍👩‍👧‍👦 4인 가족용만</label>
   <label><input type="checkbox" id="n12" checked> 잔여 ≥ 12개월</label>
   <label><input type="checkbox" id="km80" checked> 현재 8만km 이하</label>
   <label><input type="checkbox" id="evx" checked> 전기차 제외</label>
@@ -110,7 +112,7 @@ a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11px;font-weig
   <th class="sk sk2" data-k="fav" title="내 즐겨찾기 순 정렬">⭐</th>
   <th class="sk sk3" data-k="ai" title="AI 추천 순 정렬" style="color:#e63946">★</th>
   <th class="l sk sk4" data-k="car">차량</th>
-  <th data-k="tier" title="트림 등급: 1=최상위 트림 … 4=기본 트림 (차종별 트림명/엔진 기준)">등급</th>
+  <th data-k="famc" title="가족 추천순: 실질 월비용에서 가족 적합도 가치를 뺀 값(낮을수록 추천)" style="color:#7c3aed">가족추천 ▲</th><th data-k="fam" title="4인 가족 적합도: 공간 50 + 안전 20 + 가족편의 20 + 상태 10">적합도</th><th data-k="tier" title="트림 등급: 1=최상위 트림 … 4=기본 트림 (차종별 트림명/엔진 기준)">등급</th>
   <th data-k="y">연식</th>
   <th data-k="km">현재km</th>
   <th data-k="kme">만기km</th>
@@ -154,7 +156,7 @@ function predict(g,m,fu,b,age,km){const M=MODELS[g];if(!M)return null;const lv=M
  const v=[1,age,km/1e4,(km/1e4)**2];for(const k of ['m','fu','b'])for(const l of lv[k].slice(1))v.push(({m:mm,fu:ff,b:bb})[k]===l?1:0);
  let s=0;for(let i=0;i<v.length;i++)s+=v[i]*M.beta[i];return{p:Math.exp(s),exact:lv.b.includes(b)&&lv.m.includes(m)}}
 const $=id=>document.getElementById(id);
-const P=()=>({kmy:+$('kmy').value||26600,hair:(+$('hair').value||0)/100,rhair:(+$('rhair').value||0)/100,ins:+$('ins').value||0,pkr:(+$('pkr').value||0)/100,taxr:(+$('taxr').value||0)/100,pg:+$('pg').value||1650,pd:+$('pd').value||1550,pat:$('pat').value,fsub:+$('fsub').value||0,rate:(+$('rate').value||0)/100,mnt:+$('mnt').value||0});
+const P=()=>({kmy:+$('kmy').value||26600,hair:(+$('hair').value||0)/100,rhair:(+$('rhair').value||0)/100,ins:+$('ins').value||0,pkr:(+$('pkr').value||0)/100,taxr:(+$('taxr').value||0)/100,pg:+$('pg').value||1650,pd:+$('pd').value||1550,pat:$('pat').value,fsub:+$('fsub').value||0,rate:(+$('rate').value||0)/100,mnt:+$('mnt').value||0,fw:+$('fw').value||0});
 // 연비·배기량 추정 (공인 복합연비 기준, 대표 사양)
 function spec(g,car,fu){const c=(car||'').toLowerCase();const f=fuelClass(fu);let kpl=null,cc=null;
  if(f==='EV')return{kpl:null,cc:0,f};
@@ -184,6 +186,25 @@ function tierOf(g,b,grade,m){const t=((b||'')+' '+(grade||'')+' '+(m||'')).toLow
  if(g==='BMW X3'||g==='BMW X4'){if(has('m40','m50'))return 1;if(has('30 ','30e','30i','30d')||has('프로'))return 2;if(has('m 스포츠','xline'))return 3;return 4}
  if(g==='벤츠 E-클래스'){if(has('e53','e63','amg e','e450'))return 1;if(has('e350','e300'))return 2;if(has('amg line','익스클루시브'))return 3;return 4}
  return 0}
+
+// 4인 가족 적합도(0~100): 공간(차급) 50 + 안전·주행보조 20 + 가족 편의 20 + 상태(주행거리) 10
+const SIZE=[[/쿠페|컨버터블|카브리올레|로드스터|스파이더|스파이더|그란쿠페|2도어/,8,'쿠페·오픈카'],[/렉스턴 스포츠|타스만|포터|봉고|밴(\s|$)|\(?밴\)?|트럭|콜로라도|글래디에이터/,10,'픽업·밴'],
+ [/카니발|스타리아|시에나|알파드|오딧세이|스타렉스/,50,'미니밴'],
+ [/팰리세이드|(?<![a-z0-9])gv80(?![0-9])|모하비|(?<![a-z0-9])x5(?![0-9])|(?<![a-z0-9])x6(?![0-9])|(?<![a-z0-9])x7(?![0-9])|gle|gls|(?<![a-z0-9])xc90(?![0-9])|(?<![a-z0-9])q7(?![0-9])|(?<![a-z0-9])q8(?![0-9])|익스플로러|타호|트래버스|에스컬레이드|디펜더|(?<![a-z0-9])ev9(?![0-9])|아이오닉 ?9|레인지로버(?! 이보크| 벨라)/,45,'대형 SUV'],
+ [/쏘렌토|싼타페|(?<![a-z0-9])gv70(?![0-9])|(?<![a-z0-9])x3(?![0-9])|(?<![a-z0-9])x4(?![0-9])|glc|(?<![a-z0-9])xc60(?![0-9])|(?<![a-z0-9])q5(?![0-9])|렉스턴|디스커버리(?! 스포츠)|그랜드 체로키|(?<![a-z0-9])rav4(?![0-9])|무쏘|토레스|벨라|카이엔|마칸/,40,'중형 SUV'],
+ [/그랜저|(?<![a-z0-9])k8(?![0-9])|(?<![a-z0-9])k9(?![0-9])|(?<![a-z0-9])g80(?![0-9])|(?<![a-z0-9])g90(?![0-9])|5시리즈|6시리즈|7시리즈|e-클래스|s-클래스|cls|(?<![a-z0-9])a6(?![0-9])|(?<![a-z0-9])a7(?![0-9])|(?<![a-z0-9])a8(?![0-9])|(?<![a-z0-9])s90(?![0-9])|(?<![a-z0-9])es300(?![0-9])|(?<![a-z0-9])es350(?![0-9])|파나메라|임팔라/,32,'준대형 세단'],
+ [/투싼|스포티지|니로|(?<![a-z0-9])xc40(?![0-9])|(?<![a-z0-9])q3(?![0-9])|(?<![a-z0-9])q4(?![0-9])|glb|gla|티구안|아이오닉 ?5|(?<![a-z0-9])ev6(?![0-9])|코란도|이보크|디스커버리 스포츠|eqa|eqb|(?<![a-z0-9])ix1(?![0-9])|(?<![a-z0-9])ix2(?![0-9])|아이오닉 ?6/,28,'준중형 SUV'],
+ [/(?<![a-z0-9])k5(?![0-9])|쏘나타|말리부|(?<![a-z0-9])s60(?![0-9])|c-클래스|(?<![a-z0-9])a4(?![0-9])|(?<![a-z0-9])a5(?![0-9])|(?<![a-z0-9])g70(?![0-9])|캠리|어코드|3시리즈|4시리즈|모델 3|모델 y/,24,'중형 세단·SUV'],
+ [/셀토스|코나|트레일블레이저|티볼리|베뉴|(?<![a-z0-9])xm3(?![0-9])|아르카나|(?<![a-z0-9])ev3(?![0-9])|(?<![a-z0-9])ev4(?![0-9])|캐스퍼 일렉/,18,'소형 SUV'],
+ [/아반떼|(?<![a-z0-9])k3(?![0-9])|(?<![a-z0-9])i30(?![0-9])|프리우스/,15,'준중형 세단'],
+ [/레이|캐스퍼|모닝|스파크/,5,'경차']];
+const PREM=/^(bmw|벤츠|제네시스|볼보|아우디|렉서스|포르쉐|랜드로버|테슬라)/;
+function famOf(o){const c=(o.car||'').toLowerCase();let sz=25,cls='기타';for(const [re,v,nm] of SIZE){if(re.test(c)){sz=v;cls=nm;break}}
+ const pk=(o.pk||[]).map(x=>x[0]).join(' ');const yy=Math.floor(o.y/100);
+ let saf=PREM.test(c)?12:(yy>=2022?8:5);if(/드라이브 ?와이즈|스마트 ?센스|드라이빙 어시스|HDA|어시스턴트|어시스트|드라이빙 어시스턴스/i.test(pk))saf+=6;if(/모니터링|서라운드|360|파킹 어시스트|빌트인 캠/i.test(pk))saf+=4;saf=Math.min(20,saf);
+ let com=0;if(/파워 슬라이딩|컨비니언스/.test(pk)||(sz===50&&o.tier>0&&o.tier<=3))com+=7;if(/통풍|컴포트/.test(pk))com+=5;if(/선루프/.test(pk))com+=3;if(/7인승|3열/.test(pk)||/7인승/.test(c))com+=2;if(o.tier===1||o.tier===2)com+=5;else if(o.tier===3)com+=3;com=Math.min(20,com);
+ const cond=o.km<=20000?10:o.km<=50000?6:o.km<=80000?3:0;
+ const sc=sz+saf+com+cond;return{fam:sc,famCls:cls,famTip:`${cls} 공간 ${sz}/50 · 안전 ${saf}/20 · 가족편의 ${com}/20 · 상태 ${cond}/10`};}
 function calc(r,p){const [id,mk,g,mf,m,b,y,km,fu,st,lt,fee,n,acq,su,mf2,rv,rp,dep,tax,pk,grade,loc]=r;
  const buy=lt==='금융리스'?1:0; const mat=buy?(rp||0):(rv||0); const pr0x=predict(g,m,fuelClass(fu),nb(b),Math.max(0,NOWM-(Math.floor(y/100)*12+y%100)),km); const susp=!(mat>1)||(pr0x&&mat<pr0x.p*0.08); const canBuy=((mf2||'').includes('구매')||(buy&&mat>0))&&!susp;
  const age0=Math.max(0,NOWM-(Math.floor(y/100)*12+y%100)); const kme=Math.round(km+p.kmy*n/12);
@@ -204,8 +225,9 @@ function calc(r,p){const [id,mk,g,mf,m,b,y,km,fu,st,lt,fee,n,acq,su,mf2,rv,rp,de
  const pvBuy=(runM!=null&&canBuy&&sell!=null)?(cash0+fee*ann+(mat+taxv-sell)*dfn)/ann+runM:null;
  const pvm=pvRet==null?null:+(pvBuy!=null?Math.min(pvRet,pvBuy):pvRet).toFixed(1);
  const pvWay=pvBuy!=null&&pvBuy<pvRet?'만기 구매 후 매각':'만기 반납'; const selleff=(sell!=null&&holdall)?+(sell/n).toFixed(1):null; const sellpct=(selleff!=null&&holdall>0)?Math.round(selleff/holdall*100):null; const tier=tierOf(g,b,grade,m);
- return{pvm,pvWay,pvRet:pvRet!=null?+pvRet.toFixed(1):null,pvBuy:pvBuy!=null?+pvBuy.toFixed(1):null,mntM,retall,retSusp,id,mk,g,susp,fav:FAV.has(String(id))?1:0,ai:AI[String(id)]?1:0,airsn:AI[String(id)]||'',car:mf+' '+m+' '+b,y,km,kme,fee,n,cash0,acq,su,mat,buy,canBuy,st,lt,pend:pend!=null?Math.round(pend):null,pend0:pr0?Math.round(pr0.p):null,sell,margin:sell!=null&&mat>0?sell-mat:null,total,holdm:+(total/n).toFixed(1),net,netm:net!=null?+(net/n).toFixed(1):null,netmi:net!=null?+(net/n+insM).toFixed(1):null,insM,fuelm,fueln,taxm,taxIncl,allm,holdall,selleff,sellpct,tier,tiern:TIERN[tier]||'등급 미분류',kpl:kplAdj?+kplAdj.toFixed(1):null,cc:sp.cc,pk:pk||[],pkn:(pk||[]).length,pkg,taxv,tax:tax||'',grade,loc,ev:fuelClass(fu)==='EV',exact:pr?pr.exact:false,rmse:MODELS[g]?MODELS[g].rmse:null}}
-let sortK='pvm',sortD=1,selId=null;
+ const fo=famOf({car:mf+' '+m+' '+b,pk,y,km,tier});
+ return{fam:fo.fam,famCls:fo.famCls,famTip:fo.famTip,famc:pvm!=null?+(pvm-(fo.fam-60)*p.fw/10).toFixed(1):null,pvm,pvWay,pvRet:pvRet!=null?+pvRet.toFixed(1):null,pvBuy:pvBuy!=null?+pvBuy.toFixed(1):null,mntM,retall,retSusp,id,mk,g,susp,fav:FAV.has(String(id))?1:0,ai:AI[String(id)]?1:0,airsn:AI[String(id)]||'',car:mf+' '+m+' '+b,y,km,kme,fee,n,cash0,acq,su,mat,buy,canBuy,st,lt,pend:pend!=null?Math.round(pend):null,pend0:pr0?Math.round(pr0.p):null,sell,margin:sell!=null&&mat>0?sell-mat:null,total,holdm:+(total/n).toFixed(1),net,netm:net!=null?+(net/n).toFixed(1):null,netmi:net!=null?+(net/n+insM).toFixed(1):null,insM,fuelm,fueln,taxm,taxIncl,allm,holdall,selleff,sellpct,tier,tiern:TIERN[tier]||'등급 미분류',kpl:kplAdj?+kplAdj.toFixed(1):null,cc:sp.cc,pk:pk||[],pkn:(pk||[]).length,pkg,taxv,tax:tax||'',grade,loc,ev:fuelClass(fu)==='EV',exact:pr?pr.exact:false,rmse:MODELS[g]?MODELS[g].rmse:null}}
+let sortK='famc',sortD=1,selId=null;
 const FAV=(()=>{try{return new Set(JSON.parse(localStorage.getItem('encar_calc_fav')||'[]').map(String))}catch(e){return new Set()}})();
 function saveFav(){try{localStorage.setItem('encar_calc_fav',JSON.stringify([...FAV]))}catch(e){}}
 function toggleFav(id){id=String(id);if(FAV.has(id))FAV.delete(id);else FAV.add(id);saveFav();render();}
@@ -215,6 +237,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  let rows=ROWS.filter(r=>(g==='all'||r[2]===g||r[1]===g)).map(r=>calc(r,p));
  {const bud=+$('bud').value||0;if(bud>0){const k=$('budK').value;rows=rows.filter(r=>{if(r.retSusp)return false;const v=k==='pv'?r.pvm:k==='ret'?r.retall:k==='allm'?r.allm:Math.min(r.retall??1e9,r.allm??1e9);return v!=null&&v<=bud})}}
  if($('buyOnly').checked)rows=rows.filter(r=>r.canBuy&&r.mat>1);
+ if($('famOnly').checked)rows=rows.filter(r=>r.fam>=60);
  if($('n12').checked)rows=rows.filter(r=>r.n>=12);
  if($('km80').checked)rows=rows.filter(r=>r.km<=80000);
  if($('evx').checked)rows=rows.filter(r=>!r.ev);
@@ -231,7 +254,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  rows.slice(0,600).forEach((r,i)=>{const tr=document.createElement('tr');tr.className=(i<3?'r'+(i+1):'')+(r.id===selId?' sel':'')+(r.fav?' fav':'')+(r.ai?' ai':'');tr.dataset.id=r.id;
   const pills=`<span class="pill ${r.st==='렌트'?'rent':'lease'}">${r.lt||r.st}</span>${r.buy?'<span class="pill buy">구매필수</span>':''}${!r.canBuy?(r.susp?'<span class="pill no" title="만기구매가가 없거나 비정상적으로 낮음">구매가 미확인</span>':'<span class="pill no">반납만</span>'):''}${r.ev?'<span class="pill ev">⚡EV</span>':''}${r.retSusp?'<span class="pill no" title="잔여 기간 총 납입액이 현재 시세의 10% 미만 — 매물 정보 오류 가능성">조건 확인 필요</span>':''}`;
   const tip=r.pkn?`<b>선택 패키지 ${r.pkn}개 · 합계 ${f1(r.pkg)}만원</b><br>${r.pk.map(x=>`· ${x[0]} <small>${x[1]?x[1]+'만':''}</small>`).join('<br>')}`:'<b>등록된 선택 패키지 없음</b><br><small>트림 기본 사양만</small>';
-  tr.innerHTML=`<td class="rank sk sk1">${i+1}</td><td class="sk sk2"><button class="fav${r.fav?' on':''}" data-fav="${r.id}" title="내 즐겨찾기">${r.fav?'★':'☆'}</button></td><td class="sk sk3"><button class="ai${r.ai?' on':''}" title="${r.ai?'AI 추천: '+r.airsn.replace(/"/g,'&quot;'):'AI 추천 아님'}">${r.ai?'★':'·'}</button></td><td class="l car sk sk4">${r.car}${pills}${r.ai?'<span class="airsn">★ '+r.airsn+'</span>':''}<br><small style="color:#6b7280">${r.grade||''}${r.loc?' · '+r.loc:''}${r.exact?'':' · <span title="세부 트림 매칭 안 됨(차종 평균으로 추정)">시세≈</span>'}</small></td><td><span class="tier t${r.tier}" title="${r.tiern}">${r.tier?r.tier+'등급':'-'}</span></td><td>${String(r.y).slice(2,4)}/${String(r.y).slice(4,6)}</td><td>${f1(r.km)}</td><td>${f1(r.kme)}</td><td class="hl">${f1(r.fee)}</td><td>${r.n}</td><td class="${r.cash0<0?'good':''}">${r.cash0<0?'−'+f1(-r.cash0)+' 받음':f1(r.cash0)}</td><td>${f1(r.mat)}</td><td>${f1(r.pend)}</td><td>${f1(r.sell)}</td><td class="${r.margin==null?'':r.margin>=0?'good':'bad'}">${r.margin==null?'-':(r.margin>=0?'+':'−')+f1(Math.abs(r.margin))}</td><td>${f1(r.total)}</td><td>${f2(r.holdm)}</td><td class="hl">${f2(r.netm)}</td><td class="hl">${f2(r.netmi)}${r.insM?'<small style="color:#6b7280"> (+보험'+r.insM+')</small>':''}</td><td title="추정연비 ${r.kpl||'-'}km/ℓ · 지원 전 ${f2(r.fuelm)}">${f2(r.fueln)}${r.fuelm!==r.fueln?'<small style="color:#6b7280"> ('+f2(r.fuelm)+')</small>':''}</td><td>${r.taxIncl?'<small style="color:#6b7280">포함</small>':f2(r.taxm)}</td><td>${f2(r.holdall)}</td><td class="${r.sellpct!=null&&r.sellpct>=50?'bad':''}" title="매각이 월부담의 ${r.sellpct??'-'}%를 깎아줌">${r.selleff==null?'-':'−'+f2(r.selleff)}${r.sellpct!=null?'<small style="color:#6b7280"> ('+r.sellpct+'%)</small>':''}</td><td class="hl" style="color:#0a7d3b" title="${r.pvWay} 기준 (반납 ${f2(r.pvRet)} / 구매후매각 ${f2(r.pvBuy)})">${f2(r.pvm)}<br><small style="color:#6b7280;font-weight:400">${r.pvWay}</small></td><td class="hl">${f2(r.retall)}</td><td class="hl" style="color:var(--accent)">${f2(r.allm)}</td><td><span class="opt" tabindex="0">${r.pkn}개 · ${f1(r.pkg)}<span class="tip">${tip}</span></span></td><td><a class="go" href="https://fem.encar.com/cars/detail/${r.id}" target="_blank" rel="noopener">엔카</a></td>`;
+  tr.innerHTML=`<td class="rank sk sk1">${i+1}</td><td class="sk sk2"><button class="fav${r.fav?' on':''}" data-fav="${r.id}" title="내 즐겨찾기">${r.fav?'★':'☆'}</button></td><td class="sk sk3"><button class="ai${r.ai?' on':''}" title="${r.ai?'AI 추천: '+r.airsn.replace(/"/g,'&quot;'):'AI 추천 아님'}">${r.ai?'★':'·'}</button></td><td class="l car sk sk4">${r.car}${pills}${r.ai?'<span class="airsn">★ '+r.airsn+'</span>':''}<br><small style="color:#6b7280">${r.grade||''}${r.loc?' · '+r.loc:''}${r.exact?'':' · <span title="세부 트림 매칭 안 됨(차종 평균으로 추정)">시세≈</span>'}</small></td><td class="hl" style="color:#7c3aed">${f2(r.famc)}</td><td title="${r.famTip}"><b>${r.fam}</b><br><small style="color:#6b7280">${r.famCls}</small></td><td><span class="tier t${r.tier}" title="${r.tiern}">${r.tier?r.tier+'등급':'-'}</span></td><td>${String(r.y).slice(2,4)}/${String(r.y).slice(4,6)}</td><td>${f1(r.km)}</td><td>${f1(r.kme)}</td><td class="hl">${f1(r.fee)}</td><td>${r.n}</td><td class="${r.cash0<0?'good':''}">${r.cash0<0?'−'+f1(-r.cash0)+' 받음':f1(r.cash0)}</td><td>${f1(r.mat)}</td><td>${f1(r.pend)}</td><td>${f1(r.sell)}</td><td class="${r.margin==null?'':r.margin>=0?'good':'bad'}">${r.margin==null?'-':(r.margin>=0?'+':'−')+f1(Math.abs(r.margin))}</td><td>${f1(r.total)}</td><td>${f2(r.holdm)}</td><td class="hl">${f2(r.netm)}</td><td class="hl">${f2(r.netmi)}${r.insM?'<small style="color:#6b7280"> (+보험'+r.insM+')</small>':''}</td><td title="추정연비 ${r.kpl||'-'}km/ℓ · 지원 전 ${f2(r.fuelm)}">${f2(r.fueln)}${r.fuelm!==r.fueln?'<small style="color:#6b7280"> ('+f2(r.fuelm)+')</small>':''}</td><td>${r.taxIncl?'<small style="color:#6b7280">포함</small>':f2(r.taxm)}</td><td>${f2(r.holdall)}</td><td class="${r.sellpct!=null&&r.sellpct>=50?'bad':''}" title="매각이 월부담의 ${r.sellpct??'-'}%를 깎아줌">${r.selleff==null?'-':'−'+f2(r.selleff)}${r.sellpct!=null?'<small style="color:#6b7280"> ('+r.sellpct+'%)</small>':''}</td><td class="hl" style="color:#0a7d3b" title="${r.pvWay} 기준 (반납 ${f2(r.pvRet)} / 구매후매각 ${f2(r.pvBuy)})">${f2(r.pvm)}<br><small style="color:#6b7280;font-weight:400">${r.pvWay}</small></td><td class="hl">${f2(r.retall)}</td><td class="hl" style="color:var(--accent)">${f2(r.allm)}</td><td><span class="opt" tabindex="0">${r.pkn}개 · ${f1(r.pkg)}<span class="tip">${tip}</span></span></td><td><a class="go" href="https://fem.encar.com/cars/detail/${r.id}" target="_blank" rel="noopener">엔카</a></td>`;
   tr.addEventListener('click',e=>{const fb=e.target.closest('button.fav');if(fb){e.stopPropagation();toggleFav(fb.dataset.fav);return;}if(e.target.closest('a,.opt'))return;selId=r.id;showDetail(r);render();});
   tb.appendChild(tr);});
  document.querySelectorAll('th[data-k]').forEach(th=>th.classList.toggle('on',th.dataset.k===sortK));
@@ -259,6 +282,7 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  <div><span>매각효과 (실매각 ÷ 잔여) · 매각 의존도</span><span class="${r.sellpct>=50?'bad':''}">${r.selleff==null?'-':'−'+f2(r.selleff)+' ('+r.sellpct+'%)'}</span></div>
  <div><span><b>총 월부담 (보험·세금·연료 포함, 매각 반영)</b></span><span><b>${f2(r.allm)}</b></span></div>
  <div><span><b>실질 월비용 (현재가치, 연 ${(P().rate*100).toFixed(1)}% 할인 · 정비 ${r.mntM?f1(r.mntM)+'만 가산':'월료 포함'})</b></span><span class="good"><b>${f2(r.pvm)}</b></span></div>
+ <div><span><b>👨‍👩‍👧‍👦 4인 가족 적합도</b> (${r.famTip})</span><span><b>${r.fam}</b>점 → 가족추천 ${f2(r.famc)}</span></div>
  <div><span>└ 만기 반납 시 / 만기 구매 후 매각 시</span><span>${f2(r.pvRet)} / ${f2(r.pvBuy)}</span></div>
  <div><span>트림 등급</span><span>${r.tiern}${r.grade?' · '+r.grade:''}</span></div>
  ${r.ai?'<div><span style="color:#e63946"><b>★ AI 추천</b></span><span style="font-weight:500;color:#b91c1c;text-align:right;max-width:70%">'+r.airsn+'</span></div>':''}
@@ -272,8 +296,8 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  try{const pf=JSON.parse(localStorage.getItem('encar_calc_prefs')||'{}');if(pf.g&&(pf.g==='all'||pf.g==='kor'||pf.g==='imp'||gs.includes(pf.g)))$('grp').value=pf.g;if(pf.kmy&&pf.kmy!=='24000')$('kmy').value=pf.kmy;}catch(e){}
  $('sub').textContent=`${DATA.date} 수집 · 후보 ${ROWS.length}대 (${gs.length}개 차종) · 시세 모델: 엔카 일반 매물 ${Object.values(MODELS).reduce((s,m)=>s+m.n,0).toLocaleString()}대 · 단위 만원`;
  $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정) · 연료비 = 연 주행거리 ÷ 추정연비(차종·연료별 공인 복합연비 대표값, 주행 패턴 보정: 정체 시 내연기관 −12%, 고속 시 +20%, 하이브리드는 거의 그대로) × 연료단가 · 자동차세 = 배기량×cc당 세율×1.3(교육세), 차령 3년차부터 연 5% 감면(최대 50%); 렌트는 월료에 포함, 리스는 엔카 '월리스료 포함내역'에 세금이 있을 때만 포함으로 처리 · 연료비는 회사 주유비 지원(기본 월 20만)을 뺀 값 · 취등록세는 만기 구매 대신 승계매매로 넘길 계획이라 기본 0%(만기 인수 시 7% 입력) · 총 월부담 = 보험포함환산 + 연료비(지원 차감) + 자동차세(미포함시) · 매각 전 월부담 = 매각 없이 보유만 할 때(총구매비용÷잔여 + 보험·연료·세금), 매각효과 = 실매각÷잔여, 괄호의 %는 매각 의존도(50% 이상이면 붉게 표시: 되팔아야 본전인 구조라 시세 오차 리스크가 큼) · 등급 = 트림 등급(1등급 최상위 … 4등급 기본; 카니발 X Line·블랙에디션·그래비티·하이리무진=1, 시그니처=2, 노블레스=3, 프레스티지=4 (엔카 중고 시세 순) / 그랜저·팰리세이드 캘리그래피=1 / 제네시스·BMW·벤츠는 엔진·패키지 기준 근사).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆(노란 별)는 내 즐겨찾기(이 브라우저에 저장), 빨간 ★은 AI 추천(마우스를 올리면 사유). 각각 '내 즐겨찾기만' / 'AI 추천만'으로 모아볼 수 있습니다. 주소 뒤에 #fav=엔카ID,엔카ID 를 붙여 열면 그 매물들이 즐겨찾기에 추가됩니다.`;
- document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=1;}render();}));
- ['rate','mnt','bud','budK','grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
+ document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=(k==='fam')?-1:1;}render();}));
+ ['fw','famOnly','rate','mnt','bud','budK','grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
  render();})();
 </script>
 </body>
