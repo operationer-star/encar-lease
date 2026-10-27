@@ -107,6 +107,7 @@ body:not(.showadv) .adv{display:none}
   <label title="4인 가족 적합도 60점 이상(대략 중형 SUV·준대형 세단·미니밴급)"><input type="checkbox" id="famOnly" checked> 👨‍👩‍👧‍👦 4인 가족용만</label>
   <label><input type="checkbox" id="n12" checked> 잔여 ≥ 12개월</label>
   <label><input type="checkbox" id="km80" checked> 현재 8만km 이하</label>
+  <label title="출고 후 6개월 이상 경과했는데 월평균 800km 이하 주행 = 가짜매물 의심(2026-10-27 추가)"><input type="checkbox" id="lowkm" checked> 🚩 저주행 의심 제외(월 800km↓)</label>
   <label><input type="checkbox" id="evx" checked> 전기차 제외</label>
   <label><input type="checkbox" id="posOnly"> 만기 마진 +만</label>
   <label><input type="checkbox" id="favOnly"> ⭐ 내 즐겨찾기만 <span id="favCnt" style="color:#6b7280;font-weight:500"></span></label>
@@ -163,6 +164,8 @@ const BLK=new Set(["40421034", "40890479", "42088811", "S:kyuqu9"]);
 const NOWM=DATA.nowm, MODELS=DATA.models, ROWS=DATA.rows.filter(r=>!BLK.has(String(r[0])));
 // 엔카 등록번호가 최근 매물보다 150만 이상 낮으면 '장기 게시' (오래 팔리지 않은 매물 → 허위·미끼 여부 확인)
 const MAXID=Math.max(...ROWS.map(r=>+r[0]||0));
+// 저주행 의심: 경과 6개월 이상 && 월평균 km ≤ 800
+const LOWKM=new Set(ROWS.filter(r=>{const y=+r[6],km=+r[7];if(!y)return false;const a=Math.max(1,NOWM-(Math.floor(y/100)*12+y%100));return a>=6&&km/a<=800}).map(r=>String(r[0])));
 // ===== 영구삭제: 저장소 blacklist.json(모두에게 적용) + 이 브라우저 삭제목록 =====
 const REPO_API='https://api.github.com/repos/operationer-star/encar-lease/contents/blacklist.json';
 const DELR=new Set(), DELL=(()=>{try{return new Set(JSON.parse(localStorage.getItem('encar_calc_del')||'[]').map(String))}catch(e){return new Set()}})();
@@ -320,6 +323,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  document.body.classList.toggle('showadv',$('adv').checked);
  if($('n12').checked)rows=rows.filter(r=>r.n>=12);
  if($('km80').checked)rows=rows.filter(r=>r.km<=80000);
+ if($('lowkm')&&$('lowkm').checked)rows=rows.filter(r=>!LOWKM.has(String(r.id)));
  if($('evx').checked)rows=rows.filter(r=>!r.ev);
  if($('posOnly').checked)rows=rows.filter(r=>r.margin!=null&&r.margin>0);
  if($('favOnly').checked)rows=rows.filter(r=>r.fav);
