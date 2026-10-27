@@ -66,6 +66,7 @@ a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11px;font-weig
 #detail .pk{font-size:12px;color:var(--muted);margin-top:6px}
 #detail button{float:right;background:none;border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:12px;padding:2px 8px}
 .rank{color:#94a3b8;font-weight:700}
+button.delb{background:#eef1f4;border:1px solid #d8dde3;border-radius:6px;cursor:pointer;font-size:12px;padding:2px 6px;margin-left:4px}button.delb:hover{background:#ffe2e2;border-color:#f3a3a3}
 body:not(.showadv) .adv{display:none}
 .ex{display:inline-block;font-size:11px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap}.ex.both{background:#dcfce7;color:#166534}.ex.succ{background:#e0f2fe;color:#075985}.ex.ret{background:#ede9fe;color:#5b21b6}.ex.none{background:#f1f5f9;color:#64748b}
 </style>
@@ -98,6 +99,8 @@ body:not(.showadv) .adv{display:none}
 <div class="bar">
   <label title="반납 기준 / 매각 기준(총 월부담) / 둘 중 낮은 값">월 예산 ≤ <input type="number" id="bud" value="70" step="5"> 만 <select id="budK"><option value="pv">출구 기준 월부담</option><option value="min">반납·매각 중 낮은 값</option><option value="ret">반납 기준</option><option value="allm">매각 기준(총 월부담)</option></select></label>
   <label><input type="checkbox" id="buyOnly"> 만기 구매 가능만</label>
+  <button type="button" onclick="delMgr()" style="padding:5px 10px;border:1px solid #d8dde3;border-radius:7px;background:#fff;cursor:pointer;font-size:12px">🗑 삭제 관리</button>
+  <label title="엔카 등록번호가 최근 매물보다 150만 이상 낮은 = 오래 게시된 매물(허위·미끼 의심)">⏳ 장기 게시 <select id="oldF"><option value="all">전체</option><option value="hide">제외</option><option value="only">만 보기</option></select></label>
   <label>출구 <select id="exitF"><option value="all">전체</option><option value="both">🟢 반납·승계 모두 OK</option><option value="succ">🔄 승계 쉬움</option><option value="ret">↩ 반납 OK</option></select></label>
   <label title="인수·매각 관련 상세 열(만기시세·월환산 등) 표시"><input type="checkbox" id="adv"> 상세 열</label>
   <label title="4인 가족 적합도 60점 이상(대략 중형 SUV·준대형 세단·미니밴급)"><input type="checkbox" id="famOnly" checked> 👨‍👩‍👧‍👦 4인 가족용만</label>
@@ -159,6 +162,28 @@ const BLK=new Set(["40421034", "40890479"]);
 const NOWM=DATA.nowm, MODELS=DATA.models, ROWS=DATA.rows.filter(r=>!BLK.has(String(r[0])));
 // 엔카 등록번호가 최근 매물보다 150만 이상 낮으면 '장기 게시' (오래 팔리지 않은 매물 → 허위·미끼 여부 확인)
 const MAXID=Math.max(...ROWS.map(r=>+r[0]||0));
+// ===== 영구삭제: 저장소 blacklist.json(모두에게 적용) + 이 브라우저 삭제목록 =====
+const REPO_API='https://api.github.com/repos/operationer-star/encar-lease/contents/blacklist.json';
+const DELR=new Set(), DELL=(()=>{try{return new Set(JSON.parse(localStorage.getItem('encar_calc_del')||'[]').map(String))}catch(e){return new Set()}})();
+const saveDELL=()=>{try{localStorage.setItem('encar_calc_del',JSON.stringify([...DELL]))}catch(e){}};
+const isDel=id=>DELR.has(String(id))||DELL.has(String(id));
+fetch('blacklist.json?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(a=>{(a||[]).forEach(x=>DELR.add(String(x)));if(typeof render==='function')render()}).catch(()=>{});
+const b64e=s=>btoa(unescape(encodeURIComponent(s))), b64d=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,''))));
+async function ghBL(id){const tok=(()=>{try{return localStorage.getItem('encar_gh_token_pages')}catch(e){return null}})();if(!tok)return 'no_token';
+ const h={Authorization:'Bearer '+tok,Accept:'application/vnd.github+json'};let sha=null,list=[];
+ const g=await fetch(REPO_API+'?ref=main',{headers:h,cache:'no-store'});if(g.ok){const j=await g.json();sha=j.sha;try{list=JSON.parse(b64d(j.content))}catch(e){list=[]}}else if(g.status!==404)return 'err '+g.status;
+ if(!list.includes(id))list.push(id);const body={message:'blacklist: '+id+' 영구삭제 (calc.html)',content:b64e(JSON.stringify(list)),branch:'main'};if(sha)body.sha=sha;
+ const r=await fetch(REPO_API,{method:'PUT',headers:h,body:JSON.stringify(body)});return r.ok?'ok':'err '+r.status;}
+async function delRow(id){id=String(id);if(!confirm('엔카 '+id+' 매물을 영구삭제할까요?\n(허위·미끼 매물 등) — 이 브라우저에서 바로 숨기고, GitHub 토큰이 설정돼 있으면 모든 방문자·매주 갱신에서도 제외됩니다.'))return;
+ DELL.add(id);saveDELL();render();const res=await ghBL(id);
+ if(res==='ok'){DELR.add(id);alert('영구삭제 완료: 저장소 blacklist.json에 추가됨 (1~2분 뒤 모든 방문자에게 반영, 매주 갱신에서도 제외)')}
+ else if(res==='no_token'){alert('이 브라우저에서는 숨겼습니다.\n모든 방문자·매주 갱신에서도 영구 제외하려면 위쪽 [🗑 삭제 관리]에서 GitHub 토큰을 한 번 설정하세요.')}
+ else alert('저장소 반영 실패('+res+'). 이 브라우저에서는 숨김 처리됨.');}
+function delMgr(){const tokSet=(()=>{try{return !!localStorage.getItem('encar_gh_token_pages')}catch(e){return false}})();
+ const a=prompt('🗑 삭제 관리\n· 저장소 영구삭제 '+DELR.size+'대 / 이 브라우저 숨김 '+DELL.size+'대\n· GitHub 토큰: '+(tokSet?'설정됨':'미설정')+'\n\n번호 입력: 1=토큰 설정/변경  2=이 브라우저 숨김 목록 복원  3=토큰 삭제','');
+ if(a==='1'){const t=prompt('GitHub fine-grained 토큰 (operationer-star/encar-lease, Contents 쓰기 권한). 이 브라우저에만 저장됩니다.');if(t){try{localStorage.setItem('encar_gh_token_pages',t.trim())}catch(e){}alert('토큰 저장됨')}}
+ else if(a==='2'){DELL.clear();saveDELL();render();alert('이 브라우저 숨김 목록을 비웠습니다(저장소 영구삭제분은 유지)')}
+ else if(a==='3'){try{localStorage.removeItem('encar_gh_token_pages')}catch(e){}alert('토큰 삭제됨')}}
 // AI 추천(빨간 별) — 주간 데이터 갱신과 무관하게 유지. {엔카ID: 사유}
 const AI={
 '41416058':'AI 2순위 (가족 미니밴, 반납 최저) · 카니발 HEV 프레스티지 25/10, 890km — 옵션 488만(파워 슬라이딩·스타일·드라이브 와이즈·모니터링). 반납 기준 카니발 중 최저권. 정비 미포함, 중간 승계는 3년 뒤에도 지원금 약 290만 → 끝까지 타고 반납할 때. (10/27 기준 · 연 주행 한도 확인)',
@@ -272,7 +297,7 @@ function toggleFav(id){id=String(id);if(FAV.has(id))FAV.delete(id);else FAV.add(
 const f1=v=>v==null?'-':Math.round(v).toLocaleString();
 const f2=v=>v==null?'-':(+v).toFixed(1);
 function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim().toLowerCase();
- let rows=ROWS.filter(r=>(g==='all'||r[2]===g||r[1]===g)).map(r=>calc(r,p));
+ let rows=ROWS.filter(r=>!isDel(r[0])&&(g==='all'||r[2]===g||r[1]===g)).map(r=>calc(r,p));
  {// 반납 OK = 같은 차종 안에서 반납 월부담 하위 35% (차종 매물 8대 미만이면 차량비(연료 제외) ≤ 월 예산)
   const key=JSON.stringify(p);if(window.__thrKey!==key){const G={};ROWS.forEach(x=>{const c=calc(x,p);if(c.retX!=null&&c.n>=12&&!c.retSusp)(G[c.g]=G[c.g]||[]).push(c.retX)});window.__thr={};for(const k in G){const a=G[k].sort((u,v)=>u-v);window.__thr[k]=a.length>=8?a[Math.floor(a.length*0.35)]:null}window.__thrKey=key}
   const bud=+$('bud').value||70;
@@ -282,6 +307,7 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  {const bud=+$('bud').value||0;if(bud>0){const k=$('budK').value;rows=rows.filter(r=>{if(r.retSusp)return false;const v=k==='pv'?r.exitm:k==='ret'?r.retall:k==='allm'?r.allm:Math.min(r.retall??1e9,r.allm??1e9);return v!=null&&v<=bud})}}
  if($('buyOnly').checked)rows=rows.filter(r=>r.canBuy&&r.mat>1);
  if($('famOnly').checked)rows=rows.filter(r=>r.fam>=60);
+ {const of=$('oldF').value;if(of==='hide')rows=rows.filter(r=>!r.oldL);else if(of==='only')rows=rows.filter(r=>r.oldL);}
  {const ef=$('exitF').value;if(ef==='both')rows=rows.filter(r=>r.exitK==='both');else if(ef==='succ')rows=rows.filter(r=>r.exitK==='both'||r.exitK==='succ');else if(ef==='ret')rows=rows.filter(r=>r.exitK==='both'||r.exitK==='ret');}
  document.body.classList.toggle('showadv',$('adv').checked);
  if($('n12').checked)rows=rows.filter(r=>r.n>=12);
@@ -294,15 +320,15 @@ function render(){const p=P();const g=$('grp').value;const q=$('q').value.trim()
  if(q)rows=rows.filter(r=>r.car.toLowerCase().includes(q)||r.id.includes(q));
  const AIO=['42088811','41416058','42760583','42934170'].concat(Object.keys(AI));const aiTop=$('aiTop').checked;
  rows.sort((a,b)=>{if(aiTop&&a.ai!==b.ai)return b.ai-a.ai;if(aiTop&&a.ai&&b.ai)return AIO.indexOf(String(a.id))-AIO.indexOf(String(b.id));if(sortK==='fav'||sortK==='ai'){const k=sortK;if(a[k]!==b[k])return (b[k]-a[k])*sortD;return (a.pvm??1e9)-(b.pvm??1e9);}const x=a[sortK],y=b[sortK];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return typeof x==='string'?x.localeCompare(y)*sortD:(x-y)*sortD});
- $('cnt').innerHTML=`<b>${rows.length}</b>대 표시 · 전체 후보 ${ROWS.length}대`;
+ $('cnt').innerHTML=`<b>${rows.length}</b>대 표시 · 전체 후보 ${ROWS.length}대 · ⏳ 장기 게시 ${rows.filter(r=>r.oldL).length}대`;
  $('favCnt').textContent=FAV.size?'('+FAV.size+')':'';
  $('aiCnt').textContent='('+ROWS.filter(r=>AI[String(r[0])]).length+')';
  const tb=$('tb');tb.innerHTML='';
  rows.slice(0,600).forEach((r,i)=>{const tr=document.createElement('tr');tr.className=(i<3?'r'+(i+1):'')+(r.id===selId?' sel':'')+(r.fav?' fav':'')+(r.ai?' ai':'');tr.dataset.id=r.id;
   const pills=`<span class="pill ${r.st==='렌트'?'rent':'lease'}">${r.lt||r.st}</span>${r.buy?'<span class="pill buy">구매필수</span>':''}${!r.canBuy?(r.susp?'<span class="pill no" title="만기구매가가 없거나 비정상적으로 낮음">구매가 미확인</span>':'<span class="pill no">반납만</span>'):''}${r.ev?'<span class="pill ev">⚡EV</span>':''}${r.oldL?'<span class="pill no" title="엔카 등록번호가 최근 매물보다 크게 낮음 = 오래 게시된 매물. 조건이 너무 좋으면 허위·미끼 매물일 수 있으니 실차·계약서 확인">⏳ 장기 게시</span>':''}${r.retSusp?'<span class="pill no" title="잔여 기간 총 납입액이 현재 시세의 10% 미만 — 매물 정보 오류 가능성">조건 확인 필요</span>':''}`;
   const tip=r.pkn?`<b>선택 패키지 ${r.pkn}개 · 합계 ${f1(r.pkg)}만원</b><br>${r.pk.map(x=>`· ${x[0]} <small>${x[1]?x[1]+'만':''}</small>`).join('<br>')}`:'<b>등록된 선택 패키지 없음</b><br><small>트림 기본 사양만</small>';
-  tr.innerHTML=`<td class="rank sk sk1">${i+1}</td><td class="sk sk2"><button class="fav${r.fav?' on':''}" data-fav="${r.id}" title="내 즐겨찾기">${r.fav?'★':'☆'}</button></td><td class="sk sk3"><button class="ai${r.ai?' on':''}" title="${r.ai?'AI 추천: '+r.airsn.replace(/"/g,'&quot;'):'AI 추천 아님'}">${r.ai?'★':'·'}</button></td><td class="l car sk sk4">${r.car}${pills}${r.ai?'<span class="airsn">★ '+r.airsn+'</span>':''}<br><small style="color:#6b7280">${r.grade||''}${r.loc?' · '+r.loc:''}${r.exact?'':' · <span title="세부 트림 매칭 안 됨(차종 평균으로 추정)">시세≈</span>'}</small></td><td><span class="ex ${r.exitK}">${r.exitL}</span></td><td class="hl" style="color:#7c3aed">${f2(r.famc)}</td><td class="hl" style="color:#0a7d3b">${f2(r.exitm)}<br><small style="color:#6b7280;font-weight:400">${r.exitm==null?'':r.exitm===r.retX?'만기 반납':(r.succT+'개월 후 승계')}</small></td><td>${f2(r.retX)}</td><td class="${r.S1==null?'':r.S1<=100?'good':r.S1>300?'bad':''}">${r.S1==null?'<small style="color:#6b7280">단기</small>':(r.S1===0?'0 <small>(바로 넘어감)</small>':f1(r.S1))}${r.S2!=null?'<br><small style="color:#6b7280">3년 뒤 '+f1(r.S2)+'</small>':''}</td><td>${f2(r.succX)}</td><td class="hl">${f1(r.retTot)}</td><td>${r.succTot==null?'-':f1(r.succTot)+'<br><small style="color:#6b7280">'+r.succT+'개월'+'</small>'}</td><td>${f1(r.sell)}<br><small style="color:#6b7280">시세 ${f1(r.pend)}</small></td><td title="${r.famTip}"><b>${r.fam}</b><br><small style="color:#6b7280">${r.famCls}</small></td><td><span class="tier t${r.tier}" title="${r.tiern}">${r.tier?r.tier+'등급':'-'}</span></td><td>${String(r.y).slice(2,4)}/${String(r.y).slice(4,6)}</td><td>${f1(r.km)}</td><td class="hl">${f1(r.fee)}</td><td>${r.n}</td><td class="${r.cash0<0?'good':''}">${r.cash0<0?'−'+f1(-r.cash0)+' 받음':f1(r.cash0)}</td><td>${f1(r.pend0)}</td><td>${f1(r.mat)}</td><td class="adv">${f1(r.kme)}</td><td class="adv">${f1(r.pend)}</td><td class="adv">${f1(r.sell)}</td><td class="adv ${r.margin==null?'':r.margin>=0?'good':'bad'}">${r.margin==null?'-':(r.margin>=0?'+':'−')+f1(Math.abs(r.margin))}</td><td class="adv">${f1(r.total)}</td><td class="adv">${f2(r.holdm)}</td><td class="adv">${f2(r.netm)}</td><td class="adv">${f2(r.netmi)}</td><td class="adv">${f2(r.fueln)}</td><td class="adv">${r.taxIncl?'포함':f2(r.taxm)}</td><td class="adv">${f2(r.pvm)}</td><td class="adv">${f2(r.allm)}</td><td><span class="opt" tabindex="0">${r.pkn}개 · ${f1(r.pkg)}<span class="tip">${tip}</span></span></td><td><a class="go" href="https://fem.encar.com/cars/detail/${r.id}" target="_blank" rel="noopener">엔카</a></td>`;
-  tr.addEventListener('click',e=>{const fb=e.target.closest('button.fav');if(fb){e.stopPropagation();toggleFav(fb.dataset.fav);return;}if(e.target.closest('a,.opt'))return;selId=r.id;showDetail(r);render();});
+  tr.innerHTML=`<td class="rank sk sk1">${i+1}</td><td class="sk sk2"><button class="fav${r.fav?' on':''}" data-fav="${r.id}" title="내 즐겨찾기">${r.fav?'★':'☆'}</button></td><td class="sk sk3"><button class="ai${r.ai?' on':''}" title="${r.ai?'AI 추천: '+r.airsn.replace(/"/g,'&quot;'):'AI 추천 아님'}">${r.ai?'★':'·'}</button></td><td class="l car sk sk4">${r.car}${pills}${r.ai?'<span class="airsn">★ '+r.airsn+'</span>':''}<br><small style="color:#6b7280">${r.grade||''}${r.loc?' · '+r.loc:''}${r.exact?'':' · <span title="세부 트림 매칭 안 됨(차종 평균으로 추정)">시세≈</span>'}</small></td><td><span class="ex ${r.exitK}">${r.exitL}</span></td><td class="hl" style="color:#7c3aed">${f2(r.famc)}</td><td class="hl" style="color:#0a7d3b">${f2(r.exitm)}<br><small style="color:#6b7280;font-weight:400">${r.exitm==null?'':r.exitm===r.retX?'만기 반납':(r.succT+'개월 후 승계')}</small></td><td>${f2(r.retX)}</td><td class="${r.S1==null?'':r.S1<=100?'good':r.S1>300?'bad':''}">${r.S1==null?'<small style="color:#6b7280">단기</small>':(r.S1===0?'0 <small>(바로 넘어감)</small>':f1(r.S1))}${r.S2!=null?'<br><small style="color:#6b7280">3년 뒤 '+f1(r.S2)+'</small>':''}</td><td>${f2(r.succX)}</td><td class="hl">${f1(r.retTot)}</td><td>${r.succTot==null?'-':f1(r.succTot)+'<br><small style="color:#6b7280">'+r.succT+'개월'+'</small>'}</td><td>${f1(r.sell)}<br><small style="color:#6b7280">시세 ${f1(r.pend)}</small></td><td title="${r.famTip}"><b>${r.fam}</b><br><small style="color:#6b7280">${r.famCls}</small></td><td><span class="tier t${r.tier}" title="${r.tiern}">${r.tier?r.tier+'등급':'-'}</span></td><td>${String(r.y).slice(2,4)}/${String(r.y).slice(4,6)}</td><td>${f1(r.km)}</td><td class="hl">${f1(r.fee)}</td><td>${r.n}</td><td class="${r.cash0<0?'good':''}">${r.cash0<0?'−'+f1(-r.cash0)+' 받음':f1(r.cash0)}</td><td>${f1(r.pend0)}</td><td>${f1(r.mat)}</td><td class="adv">${f1(r.kme)}</td><td class="adv">${f1(r.pend)}</td><td class="adv">${f1(r.sell)}</td><td class="adv ${r.margin==null?'':r.margin>=0?'good':'bad'}">${r.margin==null?'-':(r.margin>=0?'+':'−')+f1(Math.abs(r.margin))}</td><td class="adv">${f1(r.total)}</td><td class="adv">${f2(r.holdm)}</td><td class="adv">${f2(r.netm)}</td><td class="adv">${f2(r.netmi)}</td><td class="adv">${f2(r.fueln)}</td><td class="adv">${r.taxIncl?'포함':f2(r.taxm)}</td><td class="adv">${f2(r.pvm)}</td><td class="adv">${f2(r.allm)}</td><td><span class="opt" tabindex="0">${r.pkn}개 · ${f1(r.pkg)}<span class="tip">${tip}</span></span></td><td><a class="go" href="https://fem.encar.com/cars/detail/${r.id}" target="_blank" rel="noopener">엔카</a><button class="delb" data-del="${r.id}" title="영구삭제(허위·미끼 매물 등)">🗑</button></td>`;
+  tr.addEventListener('click',e=>{const db=e.target.closest('button.delb');if(db){e.stopPropagation();delRow(db.dataset.del);return;}const fb=e.target.closest('button.fav');if(fb){e.stopPropagation();toggleFav(fb.dataset.fav);return;}if(e.target.closest('a,.opt'))return;selId=r.id;showDetail(r);render();});
   tb.appendChild(tr);});
  document.querySelectorAll('th[data-k]').forEach(th=>th.classList.toggle('on',th.dataset.k===sortK));
  try{localStorage.setItem('encar_calc_prefs',JSON.stringify({g,kmy:$('kmy').value}))}catch(e){}
@@ -349,7 +375,7 @@ function showDetail(r){const d=$('detail');d.style.display='block';
  $('sub').textContent=`${DATA.date} 수집 · 후보 ${ROWS.length}대 (${gs.length}개 차종) · 시세 모델: 엔카 일반 매물 ${Object.values(MODELS).reduce((s,m)=>s+m.n,0).toLocaleString()}대 · 단위 만원`;
  $('note').innerHTML=`<b>계산식</b> 총구매비용 = 월료×잔여 + 인수금 − 지원금 + 만기구매가 + 취등록세 · 만기시세 = 차종별 회귀모델(연식·km·세대·연료·트림) + 선택 패키지×잔존율 · 실매각 = 만기시세 × (1−매각할인) × (렌트는 1−추가할인) · 만기마진 = 실매각 − 만기구매가 · 월환산(매각) = (총구매비용 − 실매각) ÷ 잔여 · 보험포함환산 = 월환산(매각) + (월료에 보험 미포함이면 리스 보험료 가정) · 연료비 = 연 주행거리 ÷ 추정연비(차종·연료별 공인 복합연비 대표값, 주행 패턴 보정: 정체 시 내연기관 −12%, 고속 시 +20%, 하이브리드는 거의 그대로) × 연료단가 · 자동차세 = 배기량×cc당 세율×1.3(교육세), 차령 3년차부터 연 5% 감면(최대 50%); 렌트는 월료에 포함, 리스는 엔카 '월리스료 포함내역'에 세금이 있을 때만 포함으로 처리 · 연료비는 회사 주유비 지원(기본 월 20만)을 뺀 값 · 취등록세는 만기 구매 대신 승계매매로 넘길 계획이라 기본 0%(만기 인수 시 7% 입력) · 총 월부담 = 보험포함환산 + 연료비(지원 차감) + 자동차세(미포함시) · 매각 전 월부담 = 매각 없이 보유만 할 때(총구매비용÷잔여 + 보험·연료·세금), 매각효과 = 실매각÷잔여, 괄호의 %는 매각 의존도(50% 이상이면 붉게 표시: 되팔아야 본전인 구조라 시세 오차 리스크가 큼) · 등급 = 트림 등급(1등급 최상위 … 4등급 기본; 카니발 X Line·블랙에디션·그래비티·하이리무진=1, 시그니처=2, 노블레스=3, 프레스티지=4 (엔카 중고 시세 순) / 그랜저·팰리세이드 캘리그래피=1 / 제네시스·BMW·벤츠는 엔진·패키지 기준 근사).<br>만기 구매가: 금융리스는 잔금(rePayment), 운용리스·렌트는 구매옵션 가격. '반납만' 표시는 만기 구매가 불가능한 매물, '구매가 미확인'은 만기구매가가 없거나 시세의 8% 미만으로 비정상인 매물(기본 필터에서 제외). 세부 트림이 시세 모델에 없으면 차종 평균으로 추정하고 '시세≈'로 표시. 렌트승계는 약정 주행거리 초과 정산이 있을 수 있으니 계약서 확인. 행을 클릭하면 상세 계산이 열립니다. ☆(노란 별)는 내 즐겨찾기(이 브라우저에 저장), 빨간 ★은 AI 추천(마우스를 올리면 사유). 각각 '내 즐겨찾기만' / 'AI 추천만'으로 모아볼 수 있습니다. 주소 뒤에 #fav=엔카ID,엔카ID 를 붙여 열면 그 매물들이 즐겨찾기에 추가됩니다.`;
  document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=(k==='fam')?-1:1;}render();}));
- ['aiTop','tfee','sfee','exitF','fw','famOnly','rate','mnt','bud','budK','grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
+ ['oldF','aiTop','tfee','sfee','exitF','fw','famOnly','rate','mnt','bud','budK','grp','tierSel','kmy','hair','rhair','ins','pkr','taxr','buyOnly','n12','km80','evx','posOnly','favOnly','aiOnly','q','pg','pd','pat','fsub'].forEach(id=>$(id).addEventListener('input',render));
  render();})();
 </script>
 </body>
