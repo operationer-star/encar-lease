@@ -43,10 +43,8 @@ const writeJson = (f, o) => fs.writeFileSync(path.join(ROOT, f), JSON.stringify(
 // 환경변수 ENCAR_Q 가 있으면 그것을 최우선으로 쓴다 (브라우저 개발자도구 Network 탭 → premium?...&q=<값> 복사).
 const Q_CANDIDATES = [
   process.env.ENCAR_Q,
-  '(And.Hidden.N._.(Or.SellType.리스._.SellType.렌트.)_.CarType.N.)',
-  '(And.Hidden.N._.CarType.N._.(Or.SellType.리스._.SellType.렌트.))',
-  '(And.Hidden.N._.(Or.SellType.리스._.SellType.렌트.)_.CarType.A.)',
-  '(And.Hidden.N._.(Or.SellType.리스._.SellType.렌트.))',
+  '(And.Hidden.N._.CarType.Y._.AttributeType.Lease.)', // 2026-11-04 브라우저에서 확인한 국산 리스·렌트 승계 목록 q (약 2,750건)
+  '(And.Hidden.N._.CarType.Y._.(Or.SellType.리스._.SellType.렌트.))',
 ].filter(Boolean);
 
 async function fetchList() {
@@ -117,7 +115,7 @@ function parseSucc(s) {
     fee, n, tot,
     acq: toMan(pick(s, 'acquisitionCost')), su: toMan(pick(s, 'succession', 'successionCost')),
     rv: toMan(pick(s, 'residualValue')),
-    dep: toMan(pick(s, 'deposit', 'leaseDeposit', 'rentDeposit', 'guarantee', 'guaranteeAmount', 'depositAmount')),
+    dep: toMan(pick(s, 'depositAmt', 'deposit', 'leaseDeposit', 'rentDeposit', 'depositAmount')), // 실제 필드명 depositAmt (2026-11-04 확인)
     from: String(pick(s, 'leaseTermFrom', 'rentTermFrom') || ''), co: s.company?.companyNm || s.companyNm || '',
     inc, mat, el: tot && n ? tot - n : null, st: s._st,
   };
@@ -161,16 +159,18 @@ async function pool(items, worker, conc, gap) {
 
 // ───────── 3b. 예상 만기시세: 같은 모델 일반매물 회귀 (가격 ~ 경과개월 + 주행) ─────────
 async function fetchMarket(model) {
+  // 같은 세대 일반(SellType.일반) 하이브리드 매물만: 그랜저 GN7 하이브리드 / 카니발 4세대 HEV
   const q = model === 'G'
-    ? '(And.Hidden.N._.SellType.일반._.(C.CarType.N._.(C.Manufacturer.현대._.(C.ModelGroup.그랜저._.(C.Model.더 뉴 그랜저 하이브리드 (GN7)._.Model.그랜저 하이브리드 (GN7).))))'
-    : '(And.Hidden.N._.SellType.일반._.(C.CarType.N._.(C.Manufacturer.기아._.(C.ModelGroup.카니발._.(C.Model.더 뉴 카니발 4세대._.Model.카니발 4세대.)))))';
+    ? '(And.Hidden.N._.CarType.Y._.SellType.일반._.FuelType.가솔린+전기._.(C.Manufacturer.현대._.ModelGroup.그랜저.))'
+    : '(And.Hidden.N._.CarType.Y._.SellType.일반._.FuelType.가솔린+전기._.(C.Manufacturer.기아._.ModelGroup.카니발.))';
+  const sameGen = (r) => model === 'G' ? /GN7/.test(r.Model || '') : /4세대/.test(r.Model || '');
   const rows = [];
   for (let off = 0; off < 1500; off += 100) {
     const j = await getJson(`https://api.encar.com/search/car/list/premium?count=true&q=${encodeURIComponent(q)}&sr=${encodeURIComponent(`|ModifiedDate|${off}|100`)}`);
     const rs = j?.SearchResults || [];
     rows.push(...rs); if (rs.length < 100) break; await sleep(400);
   }
-  const pts = rows.filter((r) => isTarget(r) === model && r.Price > 500 && r.Mileage > 0 && r.FormYear)
+  const pts = rows.filter((r) => isTarget(r) === model && sameGen(r) && r.SellType === '일반' && r.Price > 500 && r.Mileage > 0 && r.FormYear)
     .map((r) => ({ age: Math.max(1, NOWM - (Math.floor(+r.Year / 100) * 12 + (+r.Year % 100 || 6))), km: +r.Mileage, p: +r.Price }));
   log(`일반매물 회귀 표본 ${model}:`, pts.length);
   if (pts.length < 15) return null;
