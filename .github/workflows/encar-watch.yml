@@ -1,0 +1,43 @@
+name: Encar HEV 승계 감시 (주간 수집)
+
+on:
+  schedule:
+    - cron: '0 23 * * 0'   # 매주 월요일 08:00 KST (일요일 23:00 UTC)
+  workflow_dispatch:        # Actions 탭에서 수동 실행 가능
+
+permissions:
+  contents: write
+
+concurrency:
+  group: encar-watch
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 수집·페이지·보고 생성
+        env:
+          ENCAR_Q: ${{ vars.ENCAR_Q }}   # 비워두면 스크립트가 후보 q 를 자동 시도
+        run: node scripts/collect.mjs
+
+      - name: 커밋·푸시
+        run: |
+          git config user.name  "encar-bot"
+          git config user.email "encar-bot@users.noreply.github.com"
+          git add watch.html watch_data.json watch_history.json report.json report.md
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "watch: $(TZ=Asia/Seoul date +%F) 주간 수집"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: 보고 요약 (Actions 화면용)
+        if: always()
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY" || true
