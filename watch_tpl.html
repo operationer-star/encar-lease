@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>그랜저·카니발 HEV 승계 감시</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;background:#f4f5f7;color:#1a1d21}.wrap{max-width:1700px;margin:0 auto;padding:16px 14px 70px}h1{font-size:20px;margin:0 0 4px}.sub{color:#6b7280;font-size:12.5px;margin:0 0 8px;line-height:1.5}
+.bar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:8px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:9px}.bar input,.bar select{padding:7px 9px;border:1px solid #d8dde3;border-radius:7px;font-size:13px;font-family:inherit;background:#fff}.bar label{font-size:12px;color:#475569;display:flex;align-items:center;gap:4px;font-weight:600}.stat{font-size:12px;color:#6b7280;margin-left:auto}.stat b{color:#1a1d21}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:12.5px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}th,td{padding:6px 7px;text-align:right;border-bottom:1px solid #f0f1f3;white-space:nowrap;vertical-align:top}th{position:sticky;top:0;background:#f1f5f9;color:#475569;font-weight:600;font-size:11.5px;cursor:pointer;z-index:1}th.l,td.l{text-align:left}td.car{white-space:normal;min-width:200px}td.opt{white-space:normal;max-width:260px;font-size:11px;color:#475569}
+tbody tr.r1{background:#ffdada}tbody tr.r2{background:#ffe9cf}tbody tr.r3{background:#fdf7c4}tbody tr.dim{color:#9aa3af;background:#f6f7f9}tbody tr.hold{box-shadow:inset 4px 0 0 #1d6ef0}
+.tag{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:3px;display:inline-block}.tag.ok{background:#e7f6ec;color:#0a7d3b}.tag.wn{background:#fff3e0;color:#b45309}.tag.ng{background:#ffe2e2;color:#b91c1c}.tag.gy{background:#eef1f4;color:#6b7280}.tag.bl{background:#e0ecff;color:#1d4ed8}.tag.new{background:#fde68a;color:#78350f}
+a.go{background:#e63946;color:#fff;text-decoration:none;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px}button.del{background:#eef1f4;border:1px solid #d8dde3;border-radius:6px;cursor:pointer;font-size:12px;padding:3px 7px;margin-left:4px}button.del:hover{background:#ffe2e2}
+input.memo{width:170px;border:1px solid #e5e7eb;border-radius:5px;padding:3px 5px;font-size:11.5px;font-family:inherit}select.stt{border:1px solid #e5e7eb;border-radius:5px;padding:2px 4px;font-size:11.5px;font-family:inherit}
+.note{font-size:11.5px;color:#6b7280;margin:10px 0 0;line-height:1.6}.box{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.7}.box b{color:#1a1d21}.eff{font-weight:800;color:#e63946}
+.mtab{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.mtab button{padding:6px 12px;border-radius:8px;border:1px solid #d8dde3;background:#fff;font-weight:700;font-size:12.5px;cursor:pointer}.mtab button.on{background:#1d6ef0;color:#fff;border-color:#1d6ef0}
+</style>
+</head>
+<body><div class="wrap">
+<nav id="mktTabs" style="display:flex;gap:6px;margin:0 0 10px"><a href="index.html" style="padding:7px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;background:#e5e7eb;color:#334155">🌍 수입차</a><a href="kor.html" style="padding:7px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;background:#e5e7eb;color:#334155">🇰🇷 국산차</a><a href="calc.html" style="padding:7px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;background:#e5e7eb;color:#334155">📊 효율계산</a><a href="buy.html" style="padding:7px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;background:#e5e7eb;color:#334155">🛒 구매조사</a><a href="watch.html" style="padding:7px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;background:#1d6ef0;color:#fff">👀 HEV 감시</a></nav>
+<h1>👀 그랜저·카니발 HEV 승계 감시</h1>
+<p class="sub">매주 월요일 자동 수집. 진짜 승계(계약 경과 ≥ 2개월)만 기본 표시, 신규계약 포장·저주행 의심·영구삭제 매물은 제외. 월 총비용 = 만기까지 타는 비용 (월료×잔여 + 인수금 − 지원금 − 보증금)÷잔여 + 미포함 항목(보험 10·자동차세 2.5·정비 3, 포함된 건 0). 만기판단 = 예상 만기시세(같은 모델 일반매물 회귀로 만기 시점 연식·주행 반영) − 인수가×1.07(취득세): +면 인수(승계 후 매입) 유리, −면 반납 유리 — 월 총비용에는 넣지 않은 참고값. 만기 주행은 연 25,000km 가정. 예상 시세는 엔카 판매 호가 기준이라 딜러에 되팔면 보통 5~10% 낮음. 보증금은 승계자에게 환급(반납)·상계(인수)된다는 전제 — 계약서로 확인. 렌트 인수가는 엔카 등록값(변동 가능) — 렌트사 확인. 단위 만원. 🚗 = 고속도로 주행보조 2(스마트센스 II / 드라이브 와이즈) 포함.</p>
+<div class="mtab" id="mtab"></div>
+<div class="box" id="mbox"></div>
+<div class="bar">
+<input type="search" id="q" placeholder="매물번호·트림·옵션·지역·메모 검색">
+<select id="tr"><option value="">트림 전체</option></select>
+<select id="st"><option value="">리스·렌트 전체</option><option>리스</option><option>렌트</option></select>
+<label>잔여 ≥ <input type="number" id="nmin" style="width:56px" value="30"> 개월</label>
+<label>주행 ≤ <input type="number" id="kmax" style="width:70px" placeholder="km"></label>
+<label><input type="checkbox" id="real" checked> 진짜 승계만(경과≥2개월)</label>
+<label><input type="checkbox" id="hda"> 🚗 주행보조2 있는 것만</label>
+<label><input type="checkbox" id="lowkm" checked> 🚩 저주행 의심 제외</label>
+<label><input type="checkbox" id="showdim"> 폐기 포함 보기</label>
+<span class="stat" id="cnt"></span>
+</div>
+<table><thead><tr>
+<th>#</th><th class="l">매물 / 트림 / 색·지역</th><th data-k="ym">연식</th><th data-k="km">주행</th><th data-k="pm">월평균</th><th data-k="fee">월료</th><th data-k="n">잔여</th><th data-k="acq">인수금</th><th data-k="su">지원금</th><th data-k="dep">보증금</th><th data-k="gain" title="예상 만기시세 − 인수가×1.07(취득세)">만기판단<br>(인수손익)</th><th data-k="eff">실질월료</th><th data-k="allin">월 총비용 ▲</th><th class="l">포함</th><th class="l">옵션</th><th data-k="el">경과</th><th data-k="days">광고일</th><th data-k="view">조회</th><th class="l">판매자·렌트사</th><th class="l">상태 / 메모(약정·수수료 등)</th><th>링크</th>
+</tr></thead><tbody id="tb"></tbody></table>
+<p class="note">상태·메모는 이 브라우저에 저장되고, GitHub 토큰(설정: 아래 ⚙)이 있으면 저장소 watch_notes.json에도 기록되어 다음 주 수집과 다른 기기에도 유지됩니다. 🗑 영구삭제는 저장소 blacklist.json에 기록되어 매주 수집에서 영구 제외됩니다(효율계산 페이지와 공유). <a href="#" id="tokBtn">⚙ GitHub 토큰 설정</a></p>
+</div>
+<script>
+const W=__WATCH__;
+const NOTES0=__NOTES__;
+const $=id=>document.getElementById(id);
+const NOW=new Date();const NOWM=NOW.getFullYear()*12+NOW.getMonth()+1;
+let cur='G',sortK='allin',sortD=1;
+const REPO='https://api.github.com/repos/operationer-star/encar-lease/contents/';
+function ls(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
+const b64e=s=>btoa(unescape(encodeURIComponent(s))),b64d=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,''))));
+function tok(){try{return localStorage.getItem('encar_gh_token_pages')}catch(e){return null}}
+async function ghJson(file,mut,msg){const t=tok();if(!t)return 'no_token';const h={Authorization:'Bearer '+t,Accept:'application/vnd.github+json'};let sha=null,obj=null;const g=await fetch(REPO+file+'?ref=main',{headers:h,cache:'no-store'});if(g.ok){const j=await g.json();sha=j.sha;try{obj=JSON.parse(b64d(j.content))}catch(e){obj=null}}else if(g.status!==404)return 'err '+g.status;obj=mut(obj);const body={message:msg,content:b64e(JSON.stringify(obj,null,0)),branch:'main'};if(sha)body.sha=sha;const r=await fetch(REPO+file,{method:'PUT',headers:h,body:JSON.stringify(body)});return r.ok?'ok':'err '+r.status}
+let NOTES=Object.assign({},NOTES0,ls('encar_watch_notes',{}));
+const DELL=new Set(ls('encar_watch_del',[]).map(String));
+function saveNotes(){localStorage.setItem('encar_watch_notes',JSON.stringify(NOTES))}
+function prep(){W.rows.forEach(o=>{const y=+o.ym;o.age=Math.max(1,NOWM-(Math.floor(y/100)*12+y%100));o.pm=Math.round(o.km/o.age);o.low=o.age>=6&&o.pm<400;o.lowwarn=o.age>=6&&o.pm<800;const _m=o.mat||'',_base=o.fee*o.n+(o.acq||0)-(o.su||0)-(o.dep||0);o.canRet=!_m||/반납/.test(_m);o.canBuy=/구매/.test(_m);o.buyAt=o.rv>=300?Math.round(o.rv*1.07):null;o.gain=(o.mv&&o.buyAt)?Math.round(o.mv-o.buyAt):null;if(o.canBuy&&(!o.canRet||(o.gain!=null&&o.gain>0))){o.choice=o.canRet?'인수':'인수필수';o.tot=_base}else{o.choice='반납';o.tot=_base}o.eff=o.n>0?Math.round((o.tot/o.n)*10)/10:999;const inc=o.inc||'';let add=0;if(!/보험/.test(inc))add+=10;if(!/세금/.test(inc))add+=2.5;if(!/정비/.test(inc))add+=3;o.allin=Math.round((o.eff+add)*10)/10;o.days=o.first?Math.round((NOW-new Date(o.first))/864e5):null;o.newc=o.el!=null&&o.el<=1;o.real=o.el!=null&&o.el>=2;o.hda=(o.opts||[]).some(s=>/스마트\s*센스\s*(II|Ⅱ|2)|드라이브\s*와이즈|하이웨이 드라이빙/.test(s))||(o.model==='G'&&/캘리그래피|아너스/.test(o.trim||''));o.key=[o.id,o.trim,(o.opts||[]).join(' '),o.loc,o.color,(NOTES[o.id]||{}).memo||''].join(' ').toLowerCase()})}
+function mk(){const G=W.rows.filter(r=>r.model==='G').length,C=W.rows.filter(r=>r.model==='C').length;$('mtab').innerHTML='<button class="'+(cur==='G'?'on':'')+'" data-m="G">그랜저 HEV ('+G+')</button><button class="'+(cur==='C'?'on':'')+'" data-m="C">카니발 HEV ('+C+')</button>';$('mtab').querySelectorAll('button').forEach(b=>b.onclick=()=>{cur=b.dataset.m;mk()});
+const rows=W.rows.filter(r=>r.model===cur);const real=rows.filter(r=>r.real&&!r.low),nc=rows.filter(r=>r.newc),hd=real.filter(r=>r.hda);const newIds=(W.newIds||[]).filter(id=>rows.some(r=>r.id===id));
+$('mbox').innerHTML='<b>'+(cur==='G'?'그랜저 하이브리드(GN7·IG)':'카니발 4세대 HEV')+'</b> · 수집 '+W.date+' · 승계 매물 '+rows.length+'대 · 진짜 승계 '+real.length+'대 (🚗 주행보조2 포함 '+hd.length+'대) · 🆕 신규계약 포장 '+nc.length+'대 · 이번 주 새로 등장 <b>'+newIds.length+'</b>대'+(W.prevDate?' (직전 '+W.prevDate+' 대비)':'');
+const trims=[...new Set(rows.map(r=>r.trim))].sort();$('tr').innerHTML='<option value="">트림 전체</option>'+trims.map(t=>'<option>'+t+'</option>').join('');render()}
+function render(){let rows=W.rows.filter(r=>r.model===cur);const q=$('q').value.trim().toLowerCase();if(q)rows=rows.filter(r=>r.key.includes(q));if($('tr').value)rows=rows.filter(r=>r.trim===$('tr').value);if($('st').value)rows=rows.filter(r=>r.st===$('st').value);if($('nmin').value)rows=rows.filter(r=>r.n>=+$('nmin').value);if($('kmax').value)rows=rows.filter(r=>r.km<=+$('kmax').value);if($('real').checked)rows=rows.filter(r=>r.real);if($('hda').checked)rows=rows.filter(r=>r.hda);if($('lowkm').checked)rows=rows.filter(r=>!r.low);
+const isDim=r=>DELL.has(r.id)||(NOTES[r.id]||{}).st==='폐기';if(!$('showdim').checked)rows=rows.filter(r=>!isDim(r));
+rows.sort((a,b)=>{const d=((a[sortK]??1e9)-(b[sortK]??1e9))*sortD;return d||a.allin-b.allin});$('cnt').innerHTML='표시 <b>'+rows.length+'</b>대';
+let rk=0;const newSet=new Set(W.newIds||[]);$('tb').innerHTML=rows.map(r=>{const nt=NOTES[r.id]||{};const dim=isDim(r);const top=dim?0:++rk;const cls=(dim?'dim ':'')+(nt.st==='보류'||nt.st==='연락함'?'hold ':'')+(top>0&&top<=3?'r'+top:'');const tags=(r.hda?'<span class="tag ok">🚗 주행보조2</span>':'')+(newSet.has(r.id)?'<span class="tag new">NEW</span>':'')+(r.newc?'<span class="tag ng">🆕 신규계약</span>':'')+(r.low?'<span class="tag ng">🚩 저주행</span>':r.lowwarn?'<span class="tag wn">⚠ 저주행주의</span>':'')+(r.days>90?'<span class="tag wn">장기광고</span>':'')+(r.ut==='CLIENT'?'<span class="tag bl">개인</span>':r.ut==='DEALER'?'<span class="tag gy">딜러</span>':'<span class="tag gy">업자</span>');
+return '<tr class="'+cls+'" data-id="'+r.id+'"><td>'+(top||'')+'</td><td class="l car"><b>'+r.id+'</b> '+r.trim+'<br>'+(r.color||'')+' · '+(r.loc||'')+' · '+r.st+(r.mat?' · '+r.mat:'')+'<br>'+tags+'</td><td>'+String(r.ym).slice(0,4)+'.'+String(r.ym).slice(4)+'</td><td>'+r.km.toLocaleString()+'</td><td>'+r.pm.toLocaleString()+'</td><td>'+r.fee+'</td><td>'+r.n+'</td><td>'+(r.acq||0)+'</td><td>'+(r.su||0)+'</td><td>'+(r.dep?'<b>'+r.dep+'</b><br><span style="font-size:10.5px;color:#b45309" title="보증금을 승계자가 돌려받지 못하는 조건이면 월 총비용에 더해짐">미환급시 +'+Math.round(r.dep/r.n*10)/10+'</span>':0)+'</td><td title="인수가 '+(r.rv||'-')+' ×1.07='+(r.buyAt||'-')+' / 예상 만기시세 '+(r.mv||'-')+' (만기 주행 약 '+Math.round((r.kmM||0)/1000)+'천km)"><b style="color:'+(r.choice==='반납'?'#1d6ef0':'#0a7d3b')+'">'+r.choice+'</b><br><span style="font-size:11px;color:'+(r.gain>0?'#0a7d3b':'#94a3b8')+'">'+(r.gain==null?'시세없음':(r.gain>0?'+':'')+r.gain)+'</span></td><td>'+r.eff+'</td><td class="eff">'+r.allin+'</td><td class="l">'+(r.inc||'-')+'</td><td class="l opt">'+(r.opts||[]).join(' · ')+'</td><td>'+(r.el??'-')+'</td><td>'+(r.days??'-')+'</td><td>'+(r.view??'-')+'</td><td class="l">'+(r.co||'')+'</td><td class="l"><select class="stt" data-id="'+r.id+'">'+['','보류','연락함','폐기'].map(s=>'<option'+(nt.st===s?' selected':'')+'>'+s+'</option>').join('')+'</select> <input class="memo" data-id="'+r.id+'" value="'+(nt.memo||'').replace(/"/g,'&quot;')+'" placeholder="약정·수수료·통화내용"></td><td><a class="go" href="https://fem.encar.com/cars/detail/'+r.id+'" target="_blank">보기</a><button class="del" data-x="'+r.id+'" title="영구삭제">🗑</button></td></tr>'}).join('');
+$('tb').querySelectorAll('select.stt').forEach(s=>s.onchange=()=>{NOTES[s.dataset.id]=Object.assign({},NOTES[s.dataset.id],{st:s.value});saveNotes();pushNotes();render()});
+$('tb').querySelectorAll('input.memo').forEach(i=>i.onchange=()=>{NOTES[i.dataset.id]=Object.assign({},NOTES[i.dataset.id],{memo:i.value});saveNotes();pushNotes();prep()});
+$('tb').querySelectorAll('button.del').forEach(b=>b.onclick=async()=>{const id=b.dataset.x;if(!confirm('엔카 '+id+' 매물을 영구삭제할까요?\n이 브라우저에서 숨기고, GitHub 토큰이 있으면 저장소 blacklist.json에 기록되어 매주 수집·모든 페이지에서 영구 제외됩니다.'))return;DELL.add(id);localStorage.setItem('encar_watch_del',JSON.stringify([...DELL]));render();const res=await ghJson('blacklist.json',l=>{l=Array.isArray(l)?l:[];if(!l.includes(id))l.push(id);return l},'blacklist: '+id+' 영구삭제 (watch.html)');if(res!=='ok'&&res!=='no_token')alert('저장소 기록 실패: '+res)})}
+let pushT=null;function pushNotes(){clearTimeout(pushT);pushT=setTimeout(()=>{ghJson('watch_notes.json',o=>Object.assign({},o||{},NOTES),'watch_notes 갱신').then(r=>{if(r!=='ok'&&r!=='no_token')console.warn(r)})},1500)}
+$('tokBtn').onclick=e=>{e.preventDefault();const a=prompt('1: 토큰 저장  2: 토큰 삭제','1');if(a==='1'){const t=prompt('GitHub fine-grained 토큰(contents 쓰기 권한)');if(t){localStorage.setItem('encar_gh_token_pages',t.trim());alert('저장됨')}}else if(a==='2'){localStorage.removeItem('encar_gh_token_pages');alert('삭제됨')}};
+document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortK===k)sortD*=-1;else{sortK=k;sortD=1}render()});
+['q','tr','st','nmin','kmax','real','hda','lowkm','showdim'].forEach(id=>{$(id).addEventListener('input',render);$(id).addEventListener('change',render)});
+fetch('blacklist.json?x='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(a=>{(a||[]).forEach(x=>DELL.add(String(x)));render()}).catch(()=>{});
+fetch('watch_notes.json?x='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).then(o=>{NOTES=Object.assign({},o||{},NOTES);prep();render()}).catch(()=>{});
+prep();mk();
+</script>
+</body></html>
