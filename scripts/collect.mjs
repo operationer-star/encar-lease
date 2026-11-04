@@ -12,12 +12,11 @@ const NOW = new Date();
 const NOWM = KST().getUTCFullYear() * 12 + KST().getUTCMonth() + 1;
 
 const H = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+  'User-Agent': 'encar-lease-watch/1.0 (+https://github.com/operationer-star/encar-lease; personal weekly lease-takeover monitor)',
   'Accept': 'application/json, text/plain, */*',
   'Accept-Language': 'ko-KR,ko;q=0.9',
-  'Origin': 'https://www.encar.com',
-  'Referer': 'https://www.encar.com/',
 };
+const DIAG = { done: false };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(`[${new Date().toISOString().slice(11, 19)}]`, ...a);
 
@@ -26,8 +25,9 @@ async function getJson(url, tries = 4) {
     try {
       const r = await fetch(url, { headers: H });
       if (r.status === 404) return null;
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const t = await r.text();
+      if (!DIAG.done) { DIAG.done = true; log('첫 응답 진단: HTTP', r.status, 'content-type', r.headers.get('content-type'), 'body', JSON.stringify(t.slice(0, 300))); }
+      if (!r.ok) throw new Error(`HTTP ${r.status} ${t.slice(0, 120)}`);
       return t ? JSON.parse(t) : null;
     } catch (e) {
       if (i === tries - 1) { log('FAIL', url.slice(0, 120), String(e)); return null; }
